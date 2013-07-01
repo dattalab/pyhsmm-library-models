@@ -3,7 +3,8 @@ import numpy as np
 from matplotlib import pyplot as plt
 
 from pyhsmm.models import HSMMIntNegBinVariant
-from pyhsmm.basic.models import MixtureDistribution, FrozenMixtureDistribution
+from pyhsmm.basic.models import MixtureDistribution
+from library_models import FrozenMixtureDistribution, LibraryHSMMIntNegBinVariant
 from pyhsmm.basic.distributions import Gaussian, NegativeBinomialIntegerRVariantDuration
 from pyhsmm.util.text import progprint_xrange
 
@@ -11,8 +12,8 @@ from pyhsmm.util.text import progprint_xrange
 #  generate synthetic data  #
 #############################
 
-states_in_hsmm = 4
-components_per_GMM = 4
+states_in_hsmm = 5
+components_per_GMM = 3
 component_hyperparameters = dict(mu_0=np.zeros(2),sigma_0=np.eye(2),kappa_0=0.025,nu_0=3)
 
 GMMs = [MixtureDistribution(
@@ -39,17 +40,10 @@ data, truelabels = truemodel.generate(1000)
 component_library = [c for m in GMMs for c in m.components]
 library_size = len(component_library)
 
-# get all likelihoods
-all_likelihoods, maxes, shifted_likelihoods = \
-        FrozenMixtureDistribution.get_all_likelihoods(component_library,data)
-
 # initialize weights to indicator on one component
 init_weights = np.eye(library_size)
 
-FrozenGMMs = [FrozenMixtureDistribution(
-    all_likelihoods=all_likelihoods,
-    maxes=maxes,shifted_likelihoods=shifted_likelihoods,
-    all_data=data,
+obs_distns = [FrozenMixtureDistribution(
     components=component_library,
     alpha_0=4.,
     weights=row)
@@ -62,13 +56,13 @@ FrozenGMMs = [FrozenMixtureDistribution(
 dur_distns = [NegativeBinomialIntegerRVariantDuration(np.r_[0.,0,0,1,1,1,1,1],alpha_0=5.,beta_0=5.)
         for state in range(library_size)]
 
-model = HSMMIntNegBinVariant(
+model = LibraryHSMMIntNegBinVariant(
         init_state_concentration=10.,
         alpha=6.,gamma=6.,
-        obs_distns=FrozenGMMs,
+        obs_distns=obs_distns,
         dur_distns=dur_distns)
 
-model.add_data(np.arange(data.shape[0]))
+model.add_data(data)
 
 ##################
 #  infer things  #

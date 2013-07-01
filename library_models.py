@@ -1,0 +1,161 @@
+from __future__ import division
+import numpy as np
+na = np.newaxis
+from warnings import warn
+
+import pyhsmm
+from pyhsmm.util.stats import sample_discrete_from_log_2d_destructive
+
+### frozen mixture distributions, which will be the obs distributions for the library models
+
+class FrozenMixtureDistribution(pyhsmm.basic.models.MixtureDistribution):
+    def get_all_likelihoods(self,data):
+        # NOTE: doesn't reference self.weights; it's just against
+        # self.components. this method is for the model to call inside add_data
+        likelihoods = np.empty((data.shape[0],len(self.components)))
+        for idx, c in enumerate(self.components):
+            likelihoods[:,idx] = c.log_likelihood(data)
+        maxes = likelihoods.max(axis=1)
+        shifted_likelihoods = np.exp(likelihoods - maxes[:,na])
+        return likelihoods, shifted_likelihoods, maxes
+
+    def log_likelihood(self,data_likelihoods):
+        warn('dont call me, call shifted version for speed!')
+        vals = data_likelihoods + self.weights.weights
+        return np.logaddexp.reduce(vals,axis=1)
+
+    def log_likelihoods_shifted(self,shifted_likelihoods,maxes):
+        return np.log(shifted_likelihoods.dot(self.weights.weights)) + maxes
+
+    def resample(self,*args,**kwargs):
+        raise NotImplementedError, 'should be calling resample_from_likelihoods instead'
+
+    def resample_from_likelihoods(self,data_likelihoods,niter=5,temp=None):
+        if isinstance(data_likelihoods,list):
+            data_likelihoods = np.concatenate(data_likelihoods)
+
+        if data_likelihoods.shape[0] > 0:
+            for itr in xrange(niter):
+                scores = data_likelihoods \
+                        + self.weights.log_likelihood(np.arange(len(self.components)))
+
+                if temp is not None:
+                    scores /= temp
+
+                z = sample_discrete_from_log_2d_destructive(scores)
+
+                if hasattr(self.weights,'resample_just_weights'):
+                    self.weights.resample_just_weights(z)
+                else:
+                    self.weights.resample(z)
+
+            self.weights.resample(z) # for concentration parameter
+
+        else:
+            self.weights.resample()
+
+    def __getstate__(self):
+        return dict(weights=self.weights)
+
+    def __setstate__(self,d):
+        self.weights = d['weights']
+        # NOTE: need to set components library elsewhere!
+
+### internals classes (states and labels)
+
+class LibraryGMMLabels(pyhsmm.basic.pybasicbayes.internals.labels.Labels):
+    def __init__(self,precomputed_likelihoods,data,**kwargs):
+        super(LibraryGMMLabels,self).__init__(data=data,**kwargs)
+        if precomputed_likelihoods is None:
+            precomputed_likelihoods = self.obs_distns[0].get_all_likelihoods(data)
+        self._likelihoods, self._shifted_likelihoods, self._maxes = precomputed_likelihoods
+
+    def resample(self,temp=None):
+        shifted_likelihoods, maxes = \
+                self._shifted_likelihoods, self._maxes
+        allweights = np.hstack([c.weights.weights[:,na] for c in self.components])
+        scores = np.log(shifted_likelihoods.dot(allweights))
+
+        if temp is not None:
+            scores /= temp
+
+        self.z = sample_discrete_from_log_2d_destructive(scores)
+
+class LibraryHMMStates(pyhsmm.internals.states.HMMStatesEigen):
+    def __init__(self,precomputed_likelihoods,data,**kwargs):
+        super(LibraryHMMStates,self).__init__(data=data,**kwargs)
+        if precomputed_likelihoods is None:
+            precomputed_likelihoods = self.obs_distns[0].get_all_likelihoods(data)
+        self._likelihoods, self._shifted_likelihoods, self._maxes = precomputed_likelihoods
+
+    @property
+    def aBl(self):
+        # we use dot to compute all the likelihoods here for efficiency
+        if self._aBl is None:
+            shifted_likelihoods, maxes = self._shifted_likelihoods, self._maxes
+            allweights = np.hstack([o.weights.weights[:,na] for o in self.obs_distns])
+            scores = np.log(shifted_likelihoods.dot(allweights))
+            scores += maxes[:,na]
+            self._aBl = scores
+        return self._aBl
+
+class LibraryHSMMStatesIntegerNegativeBinomialVariant(pyhsmm.internals.states.HSMMStatesIntegerNegativeBinomialVariant,LibraryHMMStates):
+    def __init__(self,precomputed_likelihoods,data,**kwargs):
+        super(LibraryHSMMStatesIntegerNegativeBinomialVariant,self).__init__(data=data,**kwargs)
+        if precomputed_likelihoods is None:
+            precomputed_likelihoods = self.obs_distns[0].get_all_likelihoods(data)
+        self._likelihoods, self._shifted_likelihoods, self._maxes = precomputed_likelihoods
+
+    @property
+    def hsmm_aBl(self):
+        return LibraryHMMStates.aBl.fget(self)
+
+### models
+
+class LibraryGMM(pyhsmm.basic.models.Mixture):
+    def __init__(self,obs_distns,*args,**kwargs):
+        assert all(isinstance(o,FrozenMixtureDistribution) for o in obs_distns) \
+                and all(o.components is obs_distns[0].components for o in obs_distns)
+        super(LibraryGMM,self).__init__(obs_distns,*args,**kwargs)
+
+    def add_data(self,data,precomputed_likelihoods=None,**kwargs):
+        self.labels_list.append(LibraryGMMLabels(data=np.asarray(data),
+            components=self.components,weights=self.weights,
+            precomputed_likelihoods=precomputed_likelihoods))
+
+    def resample_model(self,temp=None):
+        for l in self.labels_list:
+            l.resample(temp=temp)
+
+        for idx, c in enumerate(self.components):
+            c.resample_from_likelihoods(
+                    [l._likelihoods[l.stateseq == idx] for l in self.labels_list],
+                    temp=temp)
+
+class LibraryHMM(pyhsmm.models.HMMEigen):
+    _states_class = LibraryHMMStates
+
+    def __init__(self,obs_distns,*args,**kwargs):
+        assert all(isinstance(o,FrozenMixtureDistribution) for o in obs_distns) \
+                and all(o.components is obs_distns[0].components for o in obs_distns)
+        super(LibraryHMM,self).__init__(obs_distns,*args,**kwargs)
+
+    def add_data(self,data,precomputed_likelihoods=None,**kwargs):
+        self.states_list.append(self._states_class(model=self,data=np.asarray(data),
+            precomputed_likelihoods=precomputed_likelihoods,**kwargs))
+
+    def resample_obs_distns(self,**kwargs):
+        for state, distn in enumerate(self.obs_distns):
+            distn.resample_from_likelihoods(
+                    [s._likelihoods[s.stateseq == state] for s in self.states_list],
+                    **kwargs)
+        self._clear_caches()
+
+class LibraryHSMMIntNegBinVariant(LibraryHMM,pyhsmm.models.HSMMIntNegBinVariant):
+    _states_class = LibraryHSMMStatesIntegerNegativeBinomialVariant
+
+    def __init__(self,obs_distns,*args,**kwargs):
+        assert all(isinstance(o,FrozenMixtureDistribution) for o in obs_distns) \
+                and all(o.components is obs_distns[0].components for o in obs_distns)
+        pyhsmm.models.HSMMIntNegBinVariant.__init__(self,obs_distns,*args,**kwargs)
+
