@@ -63,18 +63,18 @@ class FrozenMixtureDistribution(pyhsmm.basic.models.MixtureDistribution):
 
 ### internals classes (states and labels)
 
-class LibraryGMMLabels(pyhsmm.basic.pybasicbayes.internals.labels.Labels):
+class LibraryMMLabels(pyhsmm.basic.pybasicbayes.internals.labels.Labels):
     def __init__(self,precomputed_likelihoods,data,**kwargs):
-        super(LibraryGMMLabels,self).__init__(data=data,**kwargs)
+        super(LibraryMMLabels,self).__init__(data=data,**kwargs)
         if precomputed_likelihoods is None:
-            precomputed_likelihoods = self.obs_distns[0].get_all_likelihoods(data)
+            precomputed_likelihoods = self.components[0].get_all_likelihoods(data)
         self._likelihoods, self._shifted_likelihoods, self._maxes = precomputed_likelihoods
 
     def resample(self,temp=None):
         shifted_likelihoods, maxes = \
                 self._shifted_likelihoods, self._maxes
         allweights = np.hstack([c.weights.weights[:,na] for c in self.components])
-        scores = np.log(shifted_likelihoods.dot(allweights))
+        scores = np.log(shifted_likelihoods.dot(allweights)) + np.log(self.weights.weights)
 
         if temp is not None:
             scores /= temp
@@ -112,14 +112,14 @@ class LibraryHSMMStatesIntegerNegativeBinomialVariant(pyhsmm.internals.states.HS
 
 ### models
 
-class LibraryGMM(pyhsmm.basic.models.Mixture):
-    def __init__(self,obs_distns,*args,**kwargs):
-        assert all(isinstance(o,FrozenMixtureDistribution) for o in obs_distns) \
-                and all(o.components is obs_distns[0].components for o in obs_distns)
-        super(LibraryGMM,self).__init__(obs_distns,*args,**kwargs)
+class LibraryMM(pyhsmm.basic.models.Mixture):
+    def __init__(self,components,*args,**kwargs):
+        assert all(isinstance(o,FrozenMixtureDistribution) for o in components) \
+                and all(o.components is components[0].components for o in components)
+        super(LibraryMM,self).__init__(components,*args,**kwargs)
 
     def add_data(self,data,precomputed_likelihoods=None,**kwargs):
-        self.labels_list.append(LibraryGMMLabels(data=np.asarray(data),
+        self.labels_list.append(LibraryMMLabels(data=np.asarray(data),
             components=self.components,weights=self.weights,
             precomputed_likelihoods=precomputed_likelihoods))
 
@@ -129,7 +129,7 @@ class LibraryGMM(pyhsmm.basic.models.Mixture):
 
         for idx, c in enumerate(self.components):
             c.resample_from_likelihoods(
-                    [l._likelihoods[l.stateseq == idx] for l in self.labels_list],
+                    [l._likelihoods[l.z == idx] for l in self.labels_list],
                     temp=temp)
 
 class LibraryHMM(pyhsmm.models.HMMEigen):
