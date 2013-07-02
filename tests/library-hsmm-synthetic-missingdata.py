@@ -99,3 +99,4 @@ plt.matshow(np.tile(todelete==0,(data.shape[0]//5,1)))
 plt.gcf().suptitle('deleted data')
 
 plt.show()
+
