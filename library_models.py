@@ -96,7 +96,7 @@ class LibraryHMMStates(pyhsmm.internals.states.HMMStatesEigen):
             allweights = np.hstack([o.weights.weights[:,na] for o in self.obs_distns])
             scores = np.log(shifted_likelihoods.dot(allweights))
             scores += maxes[:,na]
-            self._aBl = scores
+            self._aBl = np.nan_to_num(scores)
         return self._aBl
 
 class LibraryHSMMStatesIntegerNegativeBinomialVariant(pyhsmm.internals.states.HSMMStatesIntegerNegativeBinomialVariant,LibraryHMMStates):
