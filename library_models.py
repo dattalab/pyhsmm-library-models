@@ -1,6 +1,7 @@
 from __future__ import division
 import numpy as np
 na = np.newaxis
+import copy
 from warnings import warn
 
 import pyhsmm
@@ -54,12 +55,10 @@ class FrozenMixtureDistribution(pyhsmm.basic.models.MixtureDistribution):
         else:
             self.weights.resample()
 
-    def __getstate__(self):
-        return dict(weights=self.weights)
-
-    def __setstate__(self,d):
-        self.weights = d['weights']
-        # NOTE: need to set components library elsewhere!
+    def copy_sample(self):
+        new = copy.copy(self)
+        new.weights = self.weights.copy_sample()
+        return new
 
 ### internals classes (states and labels)
 
