@@ -37,8 +37,7 @@ class FrozenMixtureDistribution(pyhsmm.basic.models.MixtureDistribution):
 
         if data_likelihoods.shape[0] > 0:
             for itr in xrange(niter):
-                scores = data_likelihoods \
-                        + self.weights.log_likelihood(np.arange(len(self.components)))
+                scores = data_likelihoods + self.weights.weights
 
                 if temp is not None:
                     scores /= temp
@@ -54,6 +53,25 @@ class FrozenMixtureDistribution(pyhsmm.basic.models.MixtureDistribution):
 
         else:
             self.weights.resample()
+
+    def max_likelihood(self,*args,**kwargs):
+        raise NotImplementedError, 'should be calling max_likelihood_from_likelihoods instead'
+
+    def max_likelihood_from_likelihoods(self,data_likelihoods,niter=10):
+        if isinstance(data_likelihoods,list):
+            data_likelihoods = np.concatenate(data_likelihoods)
+
+        if data_likelihoods.shape[0] > 0:
+            for itr in xrange(niter):
+                ## E step
+                scores = data_likelihoods + self.weights.weights
+
+                ## M step
+                scores -= scores.max(1)[:,na]
+                np.exp(scores,out=scores)
+                scores /= scores.sum(1)[:,na]
+                self.weights.weights = scores.sum(0)
+                self.weights.weights /= self.weights.weights.sum()
 
     def copy_sample(self):
         new = copy.copy(self)
@@ -131,6 +149,22 @@ class LibraryMM(pyhsmm.basic.models.Mixture):
                     [l._likelihoods[l.z == idx] for l in self.labels_list],
                     temp=temp)
 
+        self.weights.resample([l.z for l in self.labels_list])
+
+    def Viterbi_EM_step(self):
+        for l in self.labels_list:
+            l.E_step()
+
+        for idx, c in enumerate(self.components):
+            c.max_likelihood_from_likelihoods(
+                    [l._likelihoods[l.z == idx] for l in self.labels_list])
+
+        self.weights.max_likelihood([l.z for l in self.labels_list])
+
+    def EM_step(self):
+        raise NotImplementedError
+
+
 class LibraryHMM(pyhsmm.models.HMMEigen):
     _states_class = LibraryHMMStates
 
@@ -150,6 +184,31 @@ class LibraryHMM(pyhsmm.models.HMMEigen):
                     **kwargs)
         self._clear_caches()
 
+    def Viterbi_EM_step(self):
+        # NOTE: mostly same as parent, except we call
+        # max_likelihood_from_likelihoods and pass it s._likelihoods
+
+        assert len(self.states_list) > 0, 'Must have data to run Viterbi EM'
+        self._clear_caches()
+
+        ## Viterbi step
+        for s in self.states_list:
+            s.Viterbi()
+
+        ## M step
+        # observation distribution parameters
+        for state, distn in enumerate(self.obs_distns):
+            distn.max_likelihood_from_likelihoods(
+                    [s._likelihoods[s.stateseq == state] for s in self.states_list])
+
+        # initial distribution parameters
+        self.init_state_distn.max_likelihood(
+                np.array([s.stateseq[0] for s in self.states_list]))
+
+        # transition parameters (requiring more than just the marginal expectations)
+        self.trans_distn.max_likelihood([s.stateseq for s in self.states_list])
+
+
 class LibraryHSMMIntNegBinVariant(LibraryHMM,pyhsmm.models.HSMMIntNegBinVariant):
     _states_class = LibraryHSMMStatesIntegerNegativeBinomialVariant
 
@@ -157,4 +216,12 @@ class LibraryHSMMIntNegBinVariant(LibraryHMM,pyhsmm.models.HSMMIntNegBinVariant)
         assert all(isinstance(o,FrozenMixtureDistribution) for o in obs_distns) \
                 and all(o.components is obs_distns[0].components for o in obs_distns)
         pyhsmm.models.HSMMIntNegBinVariant.__init__(self,obs_distns,*args,**kwargs)
+
+    def Viterbi_EM_step(self):
+        super(LibraryHSMMIntNegBinVariant,self).Viterbi_EM_step()
+
+        # M step for duration distributions
+        for state, distn in enumerate(self.dur_distns):
+            distn.max_likelihood(
+                    [s.durations[s.stateseq_norep == state] for s in self.states_list])
 
