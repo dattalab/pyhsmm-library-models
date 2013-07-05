@@ -98,11 +98,6 @@ class LibraryMMLabels(pyhsmm.basic.pybasicbayes.internals.labels.Labels):
 
         self.z = sample_discrete_from_log_2d_destructive(scores)
 
-    def copy_sample(self,*args,**kwargs):
-        new = super(LibraryMMLabels,self).copy_sample(*args,**kwargs)
-        del new.data
-        return new
-
 class LibraryHMMStates(pyhsmm.internals.states.HMMStatesEigen):
     def __init__(self,precomputed_likelihoods,data,**kwargs):
         super(LibraryHMMStates,self).__init__(data=data,**kwargs)
@@ -120,11 +115,6 @@ class LibraryHMMStates(pyhsmm.internals.states.HMMStatesEigen):
             scores += maxes[:,na]
             self._aBl = np.nan_to_num(scores)
         return self._aBl
-
-    def copy_sample(self,*args,**kwargs):
-        new = super(LibraryHMMStates,self).copy_sample(*args,**kwargs)
-        del new.data
-        return new
 
 class LibraryHSMMStatesIntegerNegativeBinomialVariant(pyhsmm.internals.states.HSMMStatesIntegerNegativeBinomialVariant,LibraryHMMStates):
     def __init__(self,precomputed_likelihoods,data,**kwargs):
