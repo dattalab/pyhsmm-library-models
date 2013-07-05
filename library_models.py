@@ -98,6 +98,11 @@ class LibraryMMLabels(pyhsmm.basic.pybasicbayes.internals.labels.Labels):
 
         self.z = sample_discrete_from_log_2d_destructive(scores)
 
+    def copy_sample(self,*args,**kwargs):
+        new = super(LibraryMMLabels,self).copy_sample(*args,**kwargs)
+        del new.data
+        return new
+
 class LibraryHMMStates(pyhsmm.internals.states.HMMStatesEigen):
     def __init__(self,precomputed_likelihoods,data,**kwargs):
         super(LibraryHMMStates,self).__init__(data=data,**kwargs)
@@ -115,6 +120,11 @@ class LibraryHMMStates(pyhsmm.internals.states.HMMStatesEigen):
             scores += maxes[:,na]
             self._aBl = np.nan_to_num(scores)
         return self._aBl
+
+    def copy_sample(self,*args,**kwargs):
+        new = super(LibraryHMMStates,self).copy_sample(*args,**kwargs)
+        del new.data
+        return new
 
 class LibraryHSMMStatesIntegerNegativeBinomialVariant(pyhsmm.internals.states.HSMMStatesIntegerNegativeBinomialVariant,LibraryHMMStates):
     def __init__(self,precomputed_likelihoods,data,**kwargs):
@@ -164,6 +174,9 @@ class LibraryMM(pyhsmm.basic.models.Mixture):
     def EM_step(self):
         raise NotImplementedError
 
+    def remove_data_refs(self):
+        for l in self.labels_list:
+            del l.data
 
 class LibraryHMM(pyhsmm.models.HMMEigen):
     _states_class = LibraryHMMStates
@@ -208,6 +221,9 @@ class LibraryHMM(pyhsmm.models.HMMEigen):
         # transition parameters (requiring more than just the marginal expectations)
         self.trans_distn.max_likelihood([s.stateseq for s in self.states_list])
 
+    def remove_data_refs(self):
+        for s in self.states_list:
+            del s.data
 
 class LibraryHSMMIntNegBinVariant(LibraryHMM,pyhsmm.models.HSMMIntNegBinVariant):
     _states_class = LibraryHSMMStatesIntegerNegativeBinomialVariant

@@ -97,5 +97,6 @@ for name, ls in likelihoods.iteritems():
 plt.xlabel('time into future')
 plt.ylabel('predictive likelihood')
 plt.legend()
-plt.savefig('hi.pdf')
+
+plt.show()
 

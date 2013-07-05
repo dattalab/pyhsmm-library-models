@@ -20,6 +20,7 @@ training_slice = slice(0,10000)
 ### data
 
 f = np.load('/home/mattjj/TMT_50p_5-8-13_processed_notpca.npz')
+# f = np.load('/Users/mattjj/Desktop/TMT_50p_5-8-13_processed_notpca.npz')
 data = f['data']
 mus = f['mu']
 sigmas = f['sigma']
@@ -62,10 +63,7 @@ gmm.add_data(training_data)
 for itr in progprint_xrange(num_iter):
     gmm.resample_model()
 
-gmms = []
-for itr in progprint_xrange(1):
-    gmm.resample_model()
-    gmms.append(cPickle.loads(cPickle.dumps(gmm)))
+gmms = [gmm.resample_and_copy() for itr in progprint_xrange(1)]
 
 ##########
 #  Save  #
