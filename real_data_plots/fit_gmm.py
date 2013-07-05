@@ -31,10 +31,8 @@ training_data = data[training_slice]
 library_size, obs_dim = mus.shape
 
 component_library = \
-        [pyhsmm.basic.distributions.Gaussian(
+        [pyhsmm.basic.distributions.GaussianFixed(
             mu=mu,sigma=sigma,
-            mu_0=np.zeros(obs_dim),sigma_0=np.eye(obs_dim), # dummies, not used
-            nu_0=obs_dim+10,kappa_0=1., # more dummies
             ) for mu,sigma in zip(mus,sigmas)]
 
 #################
