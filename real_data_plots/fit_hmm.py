@@ -19,7 +19,7 @@ training_slice = slice(0,10000)
 
 ### data
 
-f = np.load('/home/mattjj/TMT_50p_5-8-13_processed_notpca.npz')
+f = np.load('/scrach/TMT_50p_5-8-13_processed_notpca.npz')
 # f = np.load('/Users/mattjj/Desktop/TMT_50p_5-8-13_processed_notpca.npz')
 data = f['data']
 mus = f['mu']
@@ -71,6 +71,6 @@ hmms = [hmm.resample_and_copy() for itr in progprint_xrange(1)]
 #  Save  #
 ##########
 
-with open('hmm_results.pickle','w') as outfile:
+with open('/scratch/hmm_results.pickle','w') as outfile:
     cPickle.dump(hmms,outfile,protocol=-1)
 

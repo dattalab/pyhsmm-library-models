@@ -19,7 +19,7 @@ training_slice = slice(0,10000)
 
 ### data
 
-f = np.load('/home/mattjj/TMT_50p_5-8-13_processed_notpca.npz')
+f = np.load('/scratch/TMT_50p_5-8-13_processed_notpca.npz')
 # f = np.load('/Users/mattjj/Desktop/TMT_50p_5-8-13_processed_notpca.npz')
 data = f['data']
 mus = f['mu']
@@ -69,6 +69,6 @@ gmms = [gmm.resample_and_copy() for itr in progprint_xrange(1)]
 #  Save  #
 ##########
 
-with open('gmm_results.pickle','w') as outfile:
+with open('/scratch/gmm_results.pickle','w') as outfile:
     cPickle.dump(gmms,outfile,protocol=-1)
 
