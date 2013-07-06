@@ -99,7 +99,7 @@ class LibraryMMLabels(pyhsmm.basic.pybasicbayes.internals.labels.Labels):
         self.z = sample_discrete_from_log_2d_destructive(scores)
 
 class LibraryHMMStates(pyhsmm.internals.states.HMMStatesEigen):
-    def __init__(self,precomputed_likelihoods,data,**kwargs):
+    def __init__(self,data,precomputed_likelihoods=None,**kwargs):
         super(LibraryHMMStates,self).__init__(data=data,**kwargs)
         if precomputed_likelihoods is None:
             precomputed_likelihoods = self.obs_distns[0].get_all_likelihoods(data)
@@ -117,7 +117,7 @@ class LibraryHMMStates(pyhsmm.internals.states.HMMStatesEigen):
         return self._aBl
 
 class LibraryHSMMStatesIntegerNegativeBinomialVariant(pyhsmm.internals.states.HSMMStatesIntegerNegativeBinomialVariant,LibraryHMMStates):
-    def __init__(self,precomputed_likelihoods,data,**kwargs):
+    def __init__(self,data,precomputed_likelihoods=None,**kwargs):
         super(LibraryHSMMStatesIntegerNegativeBinomialVariant,self).__init__(data=data,**kwargs)
         if precomputed_likelihoods is None:
             precomputed_likelihoods = self.obs_distns[0].get_all_likelihoods(data)
@@ -140,14 +140,25 @@ class LibraryMM(pyhsmm.basic.models.Mixture):
             components=self.components,weights=self.weights,
             precomputed_likelihoods=precomputed_likelihoods))
 
-    def resample_model(self,temp=None):
+    # this method is necessary because mixture models handle likelihood
+    # calculation differently from the HMMs (less work in labels object, more
+    # work here, HMMs make a temporary labels object)
+    def _log_likelihoods(self,x):
+        _, shifted_likelihoods, maxes = self.components[0].get_all_likelihoods(x)
+        vals = np.empty((x.shape[0],len(self.components)))
+        for idx, c in enumerate(self.components):
+            vals[:,idx] = c.log_likelihoods_shifted(shifted_likelihoods,maxes)
+        vals += np.log(self.weights.weights)
+        return np.logaddexp.reduce(vals,axis=1)
+
+    def resample_model(self,**kwargs):
         for l in self.labels_list:
-            l.resample(temp=temp)
+            l.resample(**kwargs)
 
         for idx, c in enumerate(self.components):
             c.resample_from_likelihoods(
                     [l._likelihoods[l.z == idx] for l in self.labels_list],
-                    temp=temp)
+                    **kwargs)
 
         self.weights.resample([l.z for l in self.labels_list])
 
@@ -230,4 +241,20 @@ class LibraryHSMMIntNegBinVariant(LibraryHMM,pyhsmm.models.HSMMIntNegBinVariant)
         for state, distn in enumerate(self.dur_distns):
             distn.max_likelihood(
                     [s.durations[s.stateseq_norep == state] for s in self.states_list])
+
+### models that fix the syllables
+
+class LibraryMMFixedObs(LibraryMM):
+    def resample_model(self,**kwargs):
+        for l in self.labels_list:
+            l.resample(**kwargs)
+
+        self.weights.resample([l.z for l in self.labels_list])
+
+class LibraryHMMFixedObs(LibraryHMM):
+    def resample_obs_distns(self,*args,**kwargs):
+        pass
+
+class LibraryHSMMIntNegBinVariantFixedObs(LibraryHMMFixedObs,LibraryHSMMIntNegBinVariant):
+    pass
 

@@ -6,7 +6,7 @@ import collections
 import pyhsmm
 from pyhsmm.util.text import progprint_xrange
 
-resample_iter = 200
+resample_iter = 100
 
 ################
 #  generation  #
