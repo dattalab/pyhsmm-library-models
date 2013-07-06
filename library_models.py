@@ -99,7 +99,7 @@ class LibraryMMLabels(pyhsmm.basic.pybasicbayes.internals.labels.Labels):
         self.z = sample_discrete_from_log_2d_destructive(scores)
 
 class LibraryHMMStates(pyhsmm.internals.states.HMMStatesEigen):
-    def __init__(self,precomputed_likelihoods,data,**kwargs):
+    def __init__(self,data,precomputed_likelihoods=None,**kwargs):
         super(LibraryHMMStates,self).__init__(data=data,**kwargs)
         if precomputed_likelihoods is None:
             precomputed_likelihoods = self.obs_distns[0].get_all_likelihoods(data)
@@ -117,7 +117,7 @@ class LibraryHMMStates(pyhsmm.internals.states.HMMStatesEigen):
         return self._aBl
 
 class LibraryHSMMStatesIntegerNegativeBinomialVariant(pyhsmm.internals.states.HSMMStatesIntegerNegativeBinomialVariant,LibraryHMMStates):
-    def __init__(self,precomputed_likelihoods,data,**kwargs):
+    def __init__(self,data,precomputed_likelihoods=None,**kwargs):
         super(LibraryHSMMStatesIntegerNegativeBinomialVariant,self).__init__(data=data,**kwargs)
         if precomputed_likelihoods is None:
             precomputed_likelihoods = self.obs_distns[0].get_all_likelihoods(data)
@@ -139,6 +139,17 @@ class LibraryMM(pyhsmm.basic.models.Mixture):
         self.labels_list.append(LibraryMMLabels(data=np.asarray(data),
             components=self.components,weights=self.weights,
             precomputed_likelihoods=precomputed_likelihoods))
+
+    # this method is necessary because mixture models handle likelihood
+    # calculation differently from the HMMs (less work in labels object, more
+    # work here, HMMs make a temporary labels object)
+    def _log_likelihoods(self,x):
+        _, shifted_likelihoods, maxes = self.components[0].get_all_likelihoods(x)
+        vals = np.empty((x.shape[0],len(self.components)))
+        for idx, c in enumerate(self.components):
+            vals[:,idx] = c.log_likelihoods_shifted(shifted_likelihoods,maxes)
+        vals += np.log(self.weights.weights)
+        return np.logaddexp.reduce(vals,axis=1)
 
     def resample_model(self,temp=None):
         for l in self.labels_list:
