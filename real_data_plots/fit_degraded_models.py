@@ -52,32 +52,32 @@ print '...done'
 ### build an HMM and a GMM using those frozen syllables
 ### NOTE: or we could determinstically map the HSMM into an HMM
 
-# gmm = library_models.LibraryMMFixedObs(
-#         a_0=1.,b_0=1./10,
-#         components=hsmm.obs_distns)
-# gmm.add_data(training_data)
+gmm = library_models.LibraryMMFixedObs(
+        a_0=1.,b_0=1./10,
+        components=hsmm.obs_distns)
+gmm.add_data(training_data)
 
-# for itr in progprint_xrange(num_iter):
-#     gmm.resample_model()
-# gmms = [gmm.resample_and_copy() for itr in progprint_xrange(1)]
+for itr in progprint_xrange(num_iter):
+    gmm.resample_model()
+gmms = [gmm.resample_and_copy() for itr in progprint_xrange(1)]
 
-# with open('/scratch/gmm_from_hsmm_results.pickle','w') as outfile:
-#     cPickle.dump(gmms,outfile,protocol=-1)
+with open('/scratch/gmm_from_hsmm_results.pickle','w') as outfile:
+    cPickle.dump(gmms,outfile,protocol=-1)
 
 
-# hmm = library_models.LibraryHMMFixedObs(
-#         init_state_concentration=10.,
-#         alpha_a_0=1.0,alpha_b_0=1./10,
-#         gamma_a_0=1,gamma_b_0=1,
-#         obs_distns = hsmm.obs_distns)
-# hmm.add_data(training_data)
+hmm = library_models.LibraryHMMFixedObs(
+        init_state_concentration=10.,
+        alpha_a_0=1.0,alpha_b_0=1./10,
+        gamma_a_0=1,gamma_b_0=1,
+        obs_distns = hsmm.obs_distns)
+hmm.add_data(training_data)
 
-# for itr in progprint_xrange(num_iter):
-#     hmm.resample_model()
-# hmms = [hmm.resample_and_copy() for itr in progprint_xrange(1)]
+for itr in progprint_xrange(num_iter):
+    hmm.resample_model()
+hmms = [hmm.resample_and_copy() for itr in progprint_xrange(1)]
 
-# with open('/scratch/hmm_from_hsmm_results.pickle','w') as outfile:
-#     cPickle.dump(hmms,outfile,protocol=-1)
+with open('/scratch/hmm_from_hsmm_results.pickle','w') as outfile:
+    cPickle.dump(hmms,outfile,protocol=-1)
 
 
 hsmm = library_models.LibraryHSMMIntNegBinVariantFixedObs(
