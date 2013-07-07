@@ -187,9 +187,15 @@ class LibraryHMM(pyhsmm.models.HMMEigen):
                 and all(o.components is obs_distns[0].components for o in obs_distns)
         super(LibraryHMM,self).__init__(obs_distns,*args,**kwargs)
 
-    def add_data(self,data,precomputed_likelihoods=None,**kwargs):
-        self.states_list.append(self._states_class(model=self,data=np.asarray(data),
-            precomputed_likelihoods=precomputed_likelihoods,**kwargs))
+    def log_likelihood(self,data=None,precomputed_likelihoods=None):
+        if data is not None:
+            s = self._states_class(model=self,data=np.asarray(data),
+                    stateseq=np.zeros(len(data)), # placeholder
+                    precomputed_likelihoods=precomputed_likelihoods)
+            betal = s.messages_backwards()
+            return np.logaddexp.reduce(np.log(self.init_state_distn.pi_0) + betal[0] + s.aBl[0])
+        else:
+            return super(LibraryHMM,self).log_likelihood(data=data)
 
     def resample_obs_distns(self,**kwargs):
         for state, distn in enumerate(self.obs_distns):

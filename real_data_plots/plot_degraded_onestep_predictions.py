@@ -29,7 +29,8 @@ with open('/scratch/hmm_from_hsmm_results.pickle','r') as infile:
     models['HMMs'] = cPickle.load(infile)
 
 # HSMM
-with open('/scratch/hsmm_from_hsmm_results.pickle','r') as infile:
+# with open('/scratch/hsmm_from_hsmm_results.pickle','r') as infile:
+with open('/scratch/hsmm_results.pickle','r') as infile:
     models['HSMMs'] = cPickle.load(infile)
 
 print '...done'
