@@ -1,7 +1,7 @@
 from __future__ import division
 import numpy as np
 na = np.newaxis
-import copy
+import copy, collections
 from warnings import warn
 
 import pyhsmm
@@ -31,11 +31,11 @@ class FrozenMixtureDistribution(pyhsmm.basic.models.MixtureDistribution):
     def resample(self,*args,**kwargs):
         raise NotImplementedError, 'should be calling resample_from_likelihoods instead'
 
-    def resample_from_likelihoods(self,data_likelihoods,niter=5,temp=None):
-        if isinstance(data_likelihoods,list):
+    def resample_from_likelihoods(self,data_likelihoods=[],niter=5,temp=None):
+        if isinstance(data_likelihoods,list) and len(data_likelihoods) > 0:
             data_likelihoods = np.concatenate(data_likelihoods)
 
-        if data_likelihoods.shape[0] > 0:
+        if len(data_likelihoods) > 0:
             for itr in xrange(niter):
                 scores = data_likelihoods + self.weights.weights
 
@@ -152,15 +152,15 @@ class LibraryMM(pyhsmm.basic.models.Mixture):
         return np.logaddexp.reduce(vals,axis=1)
 
     def resample_model(self,**kwargs):
-        for l in self.labels_list:
-            l.resample(**kwargs)
-
         for idx, c in enumerate(self.components):
             c.resample_from_likelihoods(
                     [l._likelihoods[l.z == idx] for l in self.labels_list],
                     **kwargs)
 
         self.weights.resample([l.z for l in self.labels_list])
+
+        for l in self.labels_list:
+            l.resample(**kwargs)
 
     def Viterbi_EM_step(self):
         for l in self.labels_list:
@@ -178,6 +178,24 @@ class LibraryMM(pyhsmm.basic.models.Mixture):
     def remove_data_refs(self):
         for l in self.labels_list:
             del l.data
+
+    def reset(self,labels=None,list_of_labels=None):
+        if labels is not None:
+            assert len(self.labels_list) == 1
+            list_of_labels = [labels]
+        assert list_of_labels is None or len(list_of_labels) == len(self.labels_list)
+
+        for c in self.components:
+            c.resample_from_likelihoods()
+
+        self.weights.resample()
+
+        if list_of_labels is None:
+            for l in self.labels_list:
+                l._generate(len(l.z))
+        else:
+            for l,z in zip(self.labels,list_of_labels):
+                l.z = z
 
 class LibraryHMM(pyhsmm.models.HMMEigen):
     _states_class = LibraryHMMStates
@@ -232,6 +250,23 @@ class LibraryHMM(pyhsmm.models.HMMEigen):
         for s in self.states_list:
             del s.data
 
+    def reset(self,stateseq=None,list_of_stateseqs=None):
+        if stateseq is not None:
+            list_of_stateseqs = [stateseq]
+        assert list_of_stateseqs is None or len(list_of_stateseqs) == len(self.states_list)
+
+        for o in self.obs_distns:
+            o.resample_from_likelihoods()
+
+        self.trans_distn.resample()
+
+        if list_of_stateseqs is None:
+            for s in self.states_list:
+                s.generate_states(len(s.data))
+        else:
+            for s,stateseq in zip(self.states_list,list_of_stateseqs):
+                s.stateseq = stateseq
+
 class LibraryHSMMIntNegBinVariant(LibraryHMM,pyhsmm.models.HSMMIntNegBinVariant):
     _states_class = LibraryHSMMStatesIntegerNegativeBinomialVariant
 
@@ -248,14 +283,37 @@ class LibraryHSMMIntNegBinVariant(LibraryHMM,pyhsmm.models.HSMMIntNegBinVariant)
             distn.max_likelihood(
                     [s.durations[s.stateseq_norep == state] for s in self.states_list])
 
+    def reset(self,stateseq_norep=None,durations=None,
+            list_of_stateseq_noreps=None,list_of_durations=None):
+        if stateseq_norep is not None:
+            list_of_stateseq_noreps = [stateseq_norep]
+            list_of_durations = [durations]
+        assert list_of_stateseq_noreps is None or len(self.states_list) == len(list_of_stateseq_noreps) == len(list_of_durations)
+
+        for o in self.obs_distns:
+            o.resample_from_likelihoods()
+
+        self.trans_distn.resample()
+
+        if list_of_stateseq_noreps is None:
+            for s in self.states_list:
+                s.generate_states()
+        else:
+            for s,stateseq_norep,durations in zip(self.states_list,
+                    list_of_stateseq_noreps,list_of_durations):
+                s.stateseq_norep = stateseq_norep
+                s.durations = durations
+                s.stateseq = np.asarray(stateseq_norep).repeat(durations)[:len(s.data)]
+
+
 ### models that fix the syllables
 
 class LibraryMMFixedObs(LibraryMM):
     def resample_model(self,**kwargs):
+        self.weights.resample([l.z for l in self.labels_list])
+
         for l in self.labels_list:
             l.resample(**kwargs)
-
-        self.weights.resample([l.z for l in self.labels_list])
 
 class LibraryHMMFixedObs(LibraryHMM):
     def resample_obs_distns(self,*args,**kwargs):
