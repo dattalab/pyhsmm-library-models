@@ -10,6 +10,7 @@ from pyhsmm.util.stats import sample_discrete_from_log_2d_destructive
 ### frozen mixture distributions, which will be the obs distributions for the library models
 
 class FrozenMixtureDistribution(pyhsmm.basic.models.MixtureDistribution):
+    @diskmemo.memoize
     def get_all_likelihoods(self,data):
         # NOTE: doesn't reference self.weights; it's just against
         # self.components. this method is for the model to call inside add_data
