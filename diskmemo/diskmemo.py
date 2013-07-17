@@ -11,11 +11,11 @@ def memoize(f):
         print 'Created cache directory %s' \
                 % os.path.join(os.path.abspath(__file__),cache_dirname)
 
-    cache_filename = f.__module__ + f.__name__
+    cache_filename = f.__module__ + '.' + f.__name__
     cachepath = os.path.join(cache_dirname, cache_filename)
 
     try:
-        cache = shelve.open(cachepath,protocol=2)
+        cache = shelve.open(cachepath,protocol=-1)
     except:
         print 'Could not open cache file %s, maybe name collision' % cachepath
         cache = None
@@ -53,3 +53,4 @@ def memoize(f):
             return f(*args,**kwargs)
 
     return wrapped
+

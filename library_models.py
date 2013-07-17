@@ -1,11 +1,13 @@
 from __future__ import division
 import numpy as np
 na = np.newaxis
-import copy, collections
+import copy
 from warnings import warn
 
 import pyhsmm
 from pyhsmm.util.stats import sample_discrete_from_log_2d_destructive
+
+from diskmemo import diskmemo
 
 ### frozen mixture distributions, which will be the obs distributions for the library models
 
