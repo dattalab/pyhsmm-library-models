@@ -63,6 +63,7 @@ class FrozenMixtureDistribution(pyhsmm.basic.models.MixtureDistribution):
                 if temp is not None:
                     scores /= temp
 
+                scores = np.clip(scores, -1e200, 1e200) # TODO: HACK HACK HACK
                 z = sample_discrete_from_log_2d_destructive(scores)
 
                 if hasattr(self.weights,'resample_just_weights'):
