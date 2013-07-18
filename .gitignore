@@ -1,3 +1,4 @@
 *.pyc
 *.pdf
 *.pickle
+/cached_likelihoods

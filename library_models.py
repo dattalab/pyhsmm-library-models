@@ -1,7 +1,7 @@
 from __future__ import division
 import numpy as np
 na = np.newaxis
-import copy, collections
+import copy, os, hashlib, cPickle
 from warnings import warn
 
 import pyhsmm
@@ -9,15 +9,36 @@ from pyhsmm.util.stats import sample_discrete_from_log_2d_destructive
 
 ### frozen mixture distributions, which will be the obs distributions for the library models
 
+likelihood_cache_dir = os.path.join(os.path.dirname(__file__), 'cached_likelihoods')
+if not os.path.isdir(likelihood_cache_dir):
+    os.mkdir(likelihood_cache_dir)
+
 class FrozenMixtureDistribution(pyhsmm.basic.models.MixtureDistribution):
     def get_all_likelihoods(self,data):
         # NOTE: doesn't reference self.weights; it's just against
         # self.components. this method is for the model to call inside add_data
-        likelihoods = np.empty((data.shape[0],len(self.components)))
-        for idx, c in enumerate(self.components):
-            likelihoods[:,idx] = c.log_likelihood(data)
-        maxes = likelihoods.max(axis=1)
-        shifted_likelihoods = np.exp(likelihoods - maxes[:,na])
+
+        # NOTE: can change cache file opening to bz2.BZ2file to save a factor of
+        # 2 on disk space for a hit of about 20% in time
+        filename = hashlib.sha1(data).hexdigest()
+        filepath = os.path.join(likelihood_cache_dir,filename)
+
+        if os.path.isfile(filepath):
+            with open(filepath,'r') as infile:
+                likelihoods, shifted_likelihoods, maxes = cPickle.load(infile)
+            print 'Loaded from cache: %s' % filename
+        else:
+            likelihoods = np.empty((data.shape[0],len(self.components)))
+            for idx, c in enumerate(self.components):
+                likelihoods[:,idx] = c.log_likelihood(data)
+            maxes = likelihoods.max(axis=1)
+            shifted_likelihoods = np.exp(likelihoods - maxes[:,na])
+
+            with open(filepath,'w') as outfile:
+                cPickle.dump((likelihoods,shifted_likelihoods,maxes),outfile,protocol=-1)
+
+            print 'Computed and saved to cache: %s' % filename
+
         return likelihoods, shifted_likelihoods, maxes
 
     def log_likelihood(self,data_likelihoods):
