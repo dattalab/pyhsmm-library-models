@@ -6,7 +6,7 @@ import pyhsmm
 import library_models
 from pyhsmm.util.text import progprint_xrange
 
-# NOTE: this hierarchy of mixture models is totall unidentifiable and doesn't
+# NOTE: this hierarchy of mixture models is totally unidentifiable and doesn't
 # predict well because it can't look at temporal cues at all. that also means
 # the hmm and the hsmm don't degrade into this model; they stay better.
 
