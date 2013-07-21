@@ -318,15 +318,16 @@ class LibraryHSMMIntNegBinVariant(LibraryHMM,pyhsmm.models.HSMMIntNegBinVariant)
 
     def _build_states_parallel(self,states_to_resample='all'):
         import parallel # not pyhsmm.parallel
-        raw_stateseq_tuples = parallel.build_hsmm_states.map([s.data_id for s in states_to_resample])
+        raw_stateseq_tuples = parallel.build_hsmm_states.map([(s.data_id,s.left_censoring) for s in states_to_resample])
 
-        for data_id, stateseq, stateseq_norep, durations in raw_stateseq_tuples:
+        for data_id, left_censoring, stateseq, stateseq_norep, durations in raw_stateseq_tuples:
             self.add_data(
                     data=parallel.alldata[data_id],
                     precomputed_likelihoods=parallel.alllikelihoods[data_id],
                     stateseq=stateseq,
                     stateseq_norep=stateseq_norep,
-                    durations=durations)
+                    durations=durations,
+                    left_censoring=left_censoring)
             self.states_list[-1].data_id = data_id
 
     def reset(self,stateseq_norep=None,durations=None,

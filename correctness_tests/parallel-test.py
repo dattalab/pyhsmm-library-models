@@ -34,7 +34,7 @@ truemodel = HSMMIntNegBinVariant(
         obs_distns=GMMs,
         dur_distns=true_dur_distns)
 
-datas = [truemodel.rvs(10000) for i in range(4)]
+datas = [truemodel.rvs(10000)[5:] for i in range(4)]
 
 #####################################
 #  set up FrozenMixture components  #
@@ -77,7 +77,7 @@ dv['alldata'] = parallel.alldata
 dv['alllikelihoods'] = parallel.alllikelihoods
 
 for i in parallel.alldata.keys():
-    model.add_data_parallel(i)
+    model.add_data_parallel(i,left_censoring=True)
 
 ##################
 #  infer things  #
