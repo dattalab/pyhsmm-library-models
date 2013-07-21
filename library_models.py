@@ -126,10 +126,10 @@ class LibraryMMLabels(pyhsmm.basic.pybasicbayes.internals.labels.Labels):
 
 class LibraryHMMStates(pyhsmm.internals.states.HMMStatesEigen):
     def __init__(self,data,precomputed_likelihoods=None,**kwargs):
-        super(LibraryHMMStates,self).__init__(data=data,**kwargs)
         if precomputed_likelihoods is None:
-            precomputed_likelihoods = self.obs_distns[0].get_all_likelihoods(data)
+            precomputed_likelihoods = kwargs['model'].obs_distns[0].get_all_likelihoods(data)
         self._likelihoods, self._shifted_likelihoods, self._maxes = precomputed_likelihoods
+        super(LibraryHMMStates,self).__init__(data=data,**kwargs)
 
     @property
     def aBl(self):
@@ -144,10 +144,10 @@ class LibraryHMMStates(pyhsmm.internals.states.HMMStatesEigen):
 
 class LibraryHSMMStatesIntegerNegativeBinomialVariant(pyhsmm.internals.states.HSMMStatesIntegerNegativeBinomialVariant,LibraryHMMStates):
     def __init__(self,data,precomputed_likelihoods=None,**kwargs):
-        super(LibraryHSMMStatesIntegerNegativeBinomialVariant,self).__init__(data=data,**kwargs)
         if precomputed_likelihoods is None:
-            precomputed_likelihoods = self.obs_distns[0].get_all_likelihoods(data)
+            precomputed_likelihoods = kwargs['model'].obs_distns[0].get_all_likelihoods(data)
         self._likelihoods, self._shifted_likelihoods, self._maxes = precomputed_likelihoods
+        super(LibraryHSMMStatesIntegerNegativeBinomialVariant,self).__init__(data=data,**kwargs)
 
     @property
     def hsmm_aBl(self):
@@ -308,6 +308,26 @@ class LibraryHSMMIntNegBinVariant(LibraryHMM,pyhsmm.models.HSMMIntNegBinVariant)
         for state, distn in enumerate(self.dur_distns):
             distn.max_likelihood(
                     [s.durations[s.stateseq_norep == state] for s in self.states_list])
+
+    def add_data_parallel(self,data_id,**kwargs):
+        import parallel # not pyhsmm.parallel
+        self.add_data(data=parallel.alldata[data_id],
+                precomputed_likelihoods=parallel.alllikelihoods[data_id],
+                **kwargs)
+        self.states_list[-1].data_id = data_id
+
+    def _build_states_parallel(self,states_to_resample='all'):
+        import parallel # not pyhsmm.parallel
+        raw_stateseq_tuples = parallel.build_hsmm_states.map([s.data_id for s in states_to_resample])
+
+        for data_id, stateseq, stateseq_norep, durations in raw_stateseq_tuples:
+            self.add_data(
+                    data=parallel.alldata[data_id],
+                    precomputed_likelihoods=parallel.alllikelihoods[data_id],
+                    stateseq=stateseq,
+                    stateseq_norep=stateseq_norep,
+                    durations=durations)
+            self.states_list[-1].data_id = data_id
 
     def reset(self,stateseq_norep=None,durations=None,
             list_of_stateseq_noreps=None,list_of_durations=None):
