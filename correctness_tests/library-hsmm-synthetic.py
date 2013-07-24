@@ -71,6 +71,8 @@ model.add_data(data)
 for i in progprint_xrange(50):
     model.resample_model()
 
+print model.log_likelihood(data)
+
 plt.figure()
 truemodel.plot()
 plt.gcf().suptitle('truth')
