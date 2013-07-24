@@ -6,6 +6,7 @@ from warnings import warn
 
 import pyhsmm
 from pyhsmm.util.stats import sample_discrete_from_log_2d_destructive
+from pyhsmm.util.general import interactive
 
 ### frozen mixture distributions, which will be the obs distributions for the library models
 
@@ -325,9 +326,11 @@ class LibraryHSMMIntNegBinVariant(LibraryHMM,pyhsmm.models.HSMMIntNegBinVariant)
                 **kwargs)
         self.states_list[-1].data_id = data_id
 
-    def _build_states_parallel(self,states_to_resample='all'):
+    def _build_states_parallel(self,states_to_resample,temp=None):
         import parallel # not pyhsmm.parallel
-        raw_stateseq_tuples = parallel.build_hsmm_states.map([(s.data_id,s.left_censoring) for s in states_to_resample])
+        parallel.dv.push(dict(temp=temp),block=False)
+        raw_stateseq_tuples = parallel.dv.map(self._state_builder,
+                [(s.data_id,s.left_censoring) for s in states_to_resample],block=True)
 
         for data_id, left_censoring, stateseq, stateseq_norep, durations in raw_stateseq_tuples:
             self.add_data(
@@ -338,6 +341,21 @@ class LibraryHSMMIntNegBinVariant(LibraryHMM,pyhsmm.models.HSMMIntNegBinVariant)
                     durations=durations,
                     left_censoring=left_censoring)
             self.states_list[-1].data_id = data_id
+
+    @staticmethod
+    @interactive
+    def _state_builder((data_id,left_censoring)):
+        # expects globals: global_model, alldata, alllikelihoods, temp
+        global_model.add_data(
+                data=alldata[data_id],
+                precomputed_likelihoods=alllikelihoods[data_id],
+                initialize_from_prior=False,
+                left_censoring=left_censoring,
+                temp=temp)
+        s = global_model.states_list.pop()
+        stateseq, stateseq_norep, durations = s.stateseq, s.stateseq_norep, s.durations
+
+        return (data_id, left_censoring, stateseq, stateseq_norep, durations)
 
     def reset(self,stateseq_norep=None,durations=None,
             list_of_stateseq_noreps=None,list_of_durations=None):
