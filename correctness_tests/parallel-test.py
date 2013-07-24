@@ -84,7 +84,7 @@ for i in parallel.alldata.keys():
 ##################
 
 for i in progprint_xrange(50):
-    model.resample_model_parallel(temp=1000)
+    model.resample_model_parallel()
 
 plt.figure()
 truemodel.plot()
