@@ -62,7 +62,7 @@ model = LibraryHSMMIntNegBinVariant(
         obs_distns=obs_distns,
         dur_distns=dur_distns)
 
-model.add_data(data)
+model.add_data(data,left_censoring=True)
 
 ##################
 #  infer things  #
@@ -71,15 +71,15 @@ model.add_data(data)
 for i in progprint_xrange(50):
     model.resample_model()
 
-# likes = model.Viterbi_EM_fit()
+likes = model.Viterbi_EM_fit()
 
 plt.figure()
 truemodel.plot()
 plt.gcf().suptitle('truth')
 
-# plt.figure()
-# plt.plot(likes)
-# plt.gcf().suptitle('likes')
+plt.figure()
+plt.plot(likes)
+plt.gcf().suptitle('likes')
 
 plt.figure()
 model.plot()
