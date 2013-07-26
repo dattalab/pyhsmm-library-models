@@ -14,7 +14,7 @@ from pyhsmm.util.text import progprint_xrange
 
 states_in_hsmm = 5
 components_per_GMM = 3
-component_hyperparameters = dict(mu_0=np.zeros(2),sigma_0=np.eye(2),kappa_0=0.025,nu_0=3)
+component_hyperparameters = dict(mu_0=np.zeros(2),sigma_0=np.eye(2),kappa_0=0.1,nu_0=3)
 
 GMMs = [MixtureDistribution(
     alpha_0=4.,
