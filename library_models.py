@@ -154,6 +154,16 @@ class LibraryHSMMStatesIntegerNegativeBinomialVariant(pyhsmm.internals.states.HS
     def hsmm_aBl(self):
         return LibraryHMMStates.aBl.fget(self)
 
+class LibraryHSMMStatesINBVIndepTrans(LibraryHSMMStatesIntegerNegativeBinomialVariant):
+    def __init__(self,model,**kwargs):
+        self._trans_distn = copy.deepcopy(model.trans_distn)
+        self._trans_distn.resample()
+        super(LibraryHSMMStatesINBVIndepTrans,self).__init__(model=model,**kwargs)
+
+    @property
+    def trans_matrix(self):
+        return self._trans_distn.A
+
 ### models
 
 class LibraryMM(pyhsmm.basic.models.Mixture):
@@ -380,6 +390,13 @@ class LibraryHSMMIntNegBinVariant(LibraryHMM,pyhsmm.models.HSMMIntNegBinVariant)
                 s.durations = durations
                 s.stateseq = np.asarray(stateseq_norep).repeat(durations)[:len(s.data)]
 
+class LibraryHSMMIntNegBinVariantIndepTrans(LibraryHSMMIntNegBinVariant):
+    _states_class = LibraryHSMMStatesINBVIndepTrans
+
+    def resample_trans_distn(self):
+        for s in self.states_list:
+            s._trans_distn.resample([s.stateseq])
+        self._clear_caches()
 
 ### models that fix the syllables
 
