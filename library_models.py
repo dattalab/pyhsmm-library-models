@@ -237,7 +237,6 @@ class LibraryHMM(pyhsmm.models.HMMEigen):
             self.add_data(data=data,precomputed_likelihoods=precomputed_likelihoods)
             s = self.states_list.pop()
             betal = s.messages_backwards()
-            assert False
             return np.logaddexp.reduce(np.log(s.pi_0) + betal[0] + s.aBl[0])
         else:
             return super(LibraryHMM,self).log_likelihood()
@@ -302,9 +301,9 @@ class LibraryHSMMIntNegBinVariant(LibraryHMM,pyhsmm.models.HSMMIntNegBinVariant)
                 and all(o.components is obs_distns[0].components for o in obs_distns)
         pyhsmm.models.HSMMIntNegBinVariant.__init__(self,obs_distns,*args,**kwargs)
 
-    def log_likelihood(self,data=None,precomputed_likelihoods=None):
+    def log_likelihood(self,data=None,precomputed_likelihoods=None,**kwargs):
         if data is not None:
-            self.add_data(data=data,precomputed_likelihoods=precomputed_likelihoods)
+            self.add_data(data=data,precomputed_likelihoods=precomputed_likelihoods,**kwargs)
             s = self.states_list.pop()
             betal,superbetal = s.messages_backwards()
             return np.logaddexp.reduce(np.log(s.pi_0) + betal[0] + s.aBl[0])
