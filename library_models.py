@@ -308,6 +308,8 @@ class LibraryHSMMIntNegBinVariant(LibraryHMM,pyhsmm.models.HSMMIntNegBinVariant)
             betal,superbetal = s.messages_backwards()
             return np.logaddexp.reduce(np.log(s.pi_0) + betal[0] + s.aBl[0])
         else:
+            # import pudb
+            # pudb.set_trace()
             return super(LibraryHSMMIntNegBinVariant,self).log_likelihood()
 
     def Viterbi_EM_step(self):

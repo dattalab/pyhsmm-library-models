@@ -62,7 +62,7 @@ model = LibraryHSMMIntNegBinVariant(
         obs_distns=obs_distns,
         dur_distns=dur_distns)
 
-model.add_data(data)
+model.add_data(data,left_censoring=True)
 
 ##################
 #  infer things  #
@@ -71,7 +71,8 @@ model.add_data(data)
 for i in progprint_xrange(50):
     model.resample_model()
 
-print model.log_likelihood(data)
+print model.log_likelihood(data,left_censoring=True)
+print model.log_likelihood()
 
 plt.figure()
 truemodel.plot()
