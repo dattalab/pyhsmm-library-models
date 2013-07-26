@@ -13,7 +13,7 @@ from pyhsmm.util.text import progprint_xrange
 #############################
 
 states_in_hsmm = 5
-components_per_GMM = 2
+components_per_GMM = 3
 component_hyperparameters = dict(mu_0=np.zeros(2),sigma_0=np.eye(2),kappa_0=0.01,nu_0=3)
 
 GMMs = [MixtureDistribution(
@@ -46,7 +46,7 @@ init_weights = np.eye(library_size)
 
 obs_distns = [FrozenMixtureDistribution(
     components=component_library,
-    a_0=0.5,b_0=1.,
+    alpha_0=4,
     weights=row)
     for row in init_weights]
 
