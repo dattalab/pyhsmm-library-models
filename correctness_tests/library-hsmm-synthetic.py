@@ -13,8 +13,8 @@ from pyhsmm.util.text import progprint_xrange
 #############################
 
 states_in_hsmm = 5
-components_per_GMM = 3
-component_hyperparameters = dict(mu_0=np.zeros(2),sigma_0=np.eye(2),kappa_0=0.025,nu_0=3)
+components_per_GMM = 2
+component_hyperparameters = dict(mu_0=np.zeros(2),sigma_0=np.eye(2),kappa_0=0.01,nu_0=3)
 
 GMMs = [MixtureDistribution(
     alpha_0=4.,
@@ -30,7 +30,7 @@ truemodel = HSMMIntNegBinVariant(
         obs_distns=GMMs,
         dur_distns=true_dur_distns)
 
-training_datas = [truemodel.generate(1000)[0] for i in range(3)]
+training_datas = [truemodel.generate(1000)[0] for i in range(1)]
 test_data = truemodel.generate(1000)[0]
 
 #####################################
@@ -46,7 +46,7 @@ init_weights = np.eye(library_size)
 
 obs_distns = [FrozenMixtureDistribution(
     components=component_library,
-    alpha_0=4.,
+    alpha_0=components_per_GMM,
     weights=row)
     for row in init_weights]
 

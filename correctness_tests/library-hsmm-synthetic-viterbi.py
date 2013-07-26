@@ -13,8 +13,8 @@ from pyhsmm.util.text import progprint_xrange
 #############################
 
 states_in_hsmm = 5
-components_per_GMM = 3
-component_hyperparameters = dict(mu_0=np.zeros(2),sigma_0=np.eye(2),kappa_0=0.1,nu_0=3)
+components_per_GMM = 2
+component_hyperparameters = dict(mu_0=np.zeros(2),sigma_0=np.eye(2),kappa_0=0.01,nu_0=3)
 
 GMMs = [MixtureDistribution(
     alpha_0=4.,
@@ -71,15 +71,15 @@ model.add_data(data)
 for i in progprint_xrange(50):
     model.resample_model()
 
-likes = model.Viterbi_EM_fit()
+# likes = model.Viterbi_EM_fit()
 
 plt.figure()
 truemodel.plot()
 plt.gcf().suptitle('truth')
 
-plt.figure()
-plt.plot(likes)
-plt.gcf().suptitle('likes')
+# plt.figure()
+# plt.plot(likes)
+# plt.gcf().suptitle('likes')
 
 plt.figure()
 model.plot()
