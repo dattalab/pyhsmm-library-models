@@ -21,7 +21,7 @@ GMMs = [MixtureDistribution(
     components=[Gaussian(**component_hyperparameters) for i in range(components_per_GMM)])
     for state in range(states_in_hsmm)]
 
-true_dur_distns = [NegativeBinomialIntegerRVariantDuration(np.r_[0.,0,0,1,1,1,1,1],alpha_0=5.,beta_0=5.)
+true_dur_distns = [NegativeBinomialIntegerRVariantDuration(np.r_[0.,0,0,0,0,1,1,1],alpha_0=5.,beta_0=5.)
         for state in range(states_in_hsmm)]
 
 truemodel = HSMMIntNegBinVariant(
@@ -30,8 +30,8 @@ truemodel = HSMMIntNegBinVariant(
         obs_distns=GMMs,
         dur_distns=true_dur_distns)
 
-training_datas = [truemodel.generate(1000)[0] for i in range(1)]
-test_data = truemodel.generate(1000)[0]
+training_datas = [truemodel.generate(500)[0] for i in range(5)]
+test_data = truemodel.generate(100)[0]
 
 #####################################
 #  set up FrozenMixture components  #
@@ -46,7 +46,7 @@ init_weights = np.eye(library_size)
 
 obs_distns = [FrozenMixtureDistribution(
     components=component_library,
-    alpha_0=components_per_GMM,
+    a_0=0.5,b_0=1.,
     weights=row)
     for row in init_weights]
 
@@ -54,7 +54,7 @@ obs_distns = [FrozenMixtureDistribution(
 #  build HSMM  #
 ################
 
-dur_distns = [NegativeBinomialIntegerRVariantDuration(np.r_[0.,0,0,1,1,1,1,1],alpha_0=5.,beta_0=5.)
+dur_distns = [NegativeBinomialIntegerRVariantDuration(np.r_[0.,0,0,0,0,1,1,1],alpha_0=5.,beta_0=5.)
         for state in range(library_size)]
 
 model = LibraryHSMMIntNegBinVariant(
@@ -73,7 +73,7 @@ for data in training_datas:
 train_likes = []
 test_likes = []
 
-for i in progprint_xrange(25):
+for i in progprint_xrange(50):
     model.resample_model()
     train_likes.append(model.log_likelihood())
     test_likes.append(model.log_likelihood(test_data,left_censoring=True))
