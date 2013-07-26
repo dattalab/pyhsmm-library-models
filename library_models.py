@@ -31,7 +31,7 @@ class FrozenMixtureDistribution(pyhsmm.basic.models.MixtureDistribution):
         if os.path.isfile(filepath):
             with open(filepath,'r') as infile:
                 likelihoods, shifted_likelihoods, maxes = cPickle.load(infile)
-            print 'Loaded from cache: %s' % filename
+            # print 'Loaded from cache: %s' % filename
         else:
             likelihoods = np.empty((data.shape[0],len(self.components)))
             for idx, c in enumerate(self.components):
