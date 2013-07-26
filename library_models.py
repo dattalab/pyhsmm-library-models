@@ -161,7 +161,7 @@ class LibraryHSMMStatesINBVIndepTrans(LibraryHSMMStatesIntegerNegativeBinomialVa
         super(LibraryHSMMStatesINBVIndepTrans,self).__init__(model=model,**kwargs)
 
     @property
-    def trans_matrix(self):
+    def hsmm_trans_matrix(self):
         return self._trans_distn.A
 
 ### models
