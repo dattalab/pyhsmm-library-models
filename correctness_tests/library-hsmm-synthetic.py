@@ -30,7 +30,8 @@ truemodel = HSMMIntNegBinVariant(
         obs_distns=GMMs,
         dur_distns=true_dur_distns)
 
-data, truelabels = truemodel.generate(1000)
+training_datas = [truemodel.generate(1000)[0] for i in range(3)]
+test_data = truemodel.generate(1000)[0]
 
 #####################################
 #  set up FrozenMixture components  #
@@ -62,17 +63,23 @@ model = LibraryHSMMIntNegBinVariant(
         obs_distns=obs_distns,
         dur_distns=dur_distns)
 
-model.add_data(data,left_censoring=True)
+for data in training_datas:
+    model.add_data(data,left_censoring=True)
 
 ##################
 #  infer things  #
 ##################
 
-for i in progprint_xrange(50):
-    model.resample_model()
+train_likes = []
+test_likes = []
 
-print model.log_likelihood(data,left_censoring=True)
-print model.log_likelihood()
+for i in progprint_xrange(25):
+    model.resample_model()
+    train_likes.append(model.log_likelihood())
+    test_likes.append(model.log_likelihood(test_data,left_censoring=True))
+
+print 'training data likelihood when in the model: %g' % model.log_likelihood()
+print 'training data likelihood passed in externally: %g' % sum(model.log_likelihood(data,left_censoring=True) for data in training_datas)
 
 plt.figure()
 truemodel.plot()
@@ -81,5 +88,10 @@ plt.gcf().suptitle('truth')
 plt.figure()
 model.plot()
 plt.gcf().suptitle('inferred')
+
+plt.figure()
+plt.plot(train_likes,label='training')
+plt.plot(test_likes,label='test')
+plt.legend()
 
 plt.show()
