@@ -3,6 +3,7 @@ import numpy as np
 na = np.newaxis
 import copy, os, hashlib, cPickle
 from warnings import warn
+from collections import defaultdict
 
 import pyhsmm
 from pyhsmm.util.stats import sample_discrete_from_log_2d_destructive
@@ -155,9 +156,9 @@ class LibraryHSMMStatesIntegerNegativeBinomialVariant(pyhsmm.internals.states.HS
         return LibraryHMMStates.aBl.fget(self)
 
 class LibraryHSMMStatesINBVIndepTrans(LibraryHSMMStatesIntegerNegativeBinomialVariant):
-    def __init__(self,model,**kwargs):
-        self._trans_distn = copy.deepcopy(model.trans_distn)
-        self._trans_distn.resample()
+    def __init__(self,model,group_id,**kwargs):
+        self.group_id = group_id
+        self._trans_distn = model.trans_distns[group_id]
         super(LibraryHSMMStatesINBVIndepTrans,self).__init__(model=model,**kwargs)
 
     @property
@@ -393,9 +394,15 @@ class LibraryHSMMIntNegBinVariant(LibraryHMM,pyhsmm.models.HSMMIntNegBinVariant)
 class LibraryHSMMIntNegBinVariantIndepTrans(LibraryHSMMIntNegBinVariant):
     _states_class = LibraryHSMMStatesINBVIndepTrans
 
+    def __init__(self,*args,**kwargs):
+        super(LibraryHSMMIntNegBinVariantIndepTrans,self).__init__(*args,**kwargs)
+        # self.trans_distn is a template object for all the trans distns
+        self.trans_distns = defaultdict(lambda: copy.deepcopy(self.trans_distn))
+
     def resample_trans_distn(self):
-        for s in self.states_list:
-            s._trans_distn.resample([s.stateseq])
+        for group_id, trans_distn in self.trans_distns.iteritems():
+            trans_distn.resample([s.stateseq for s in self.states_list
+                if s.group_id == group_id])
         self._clear_caches()
 
 ### models that fix the syllables

@@ -30,10 +30,11 @@ truemodel = HSMMIntNegBinVariant(
         obs_distns=GMMs,
         dur_distns=true_dur_distns)
 
-training_datas = []
-for i in range(5):
-    training_datas.append(truemodel.generate(500)[0])
-    truemodel.trans_distn.resample() # new transition matrix from the prior
+training_datas = {}
+for group_id in range(2):
+    for i in range(2):
+        training_datas[group_id] = truemodel.generate(500)[0]
+    truemodel.trans_distn.resample() # new transition matrix for the next group
 
 #####################################
 #  set up FrozenMixture components  #
@@ -65,8 +66,8 @@ model = LibraryHSMMIntNegBinVariantIndepTrans(
         obs_distns=obs_distns,
         dur_distns=dur_distns)
 
-for data in training_datas:
-    model.add_data(data,left_censoring=True)
+for group_id, data in training_datas.iteritems():
+    model.add_data(data,group_id=group_id,left_censoring=True)
 
 ##################
 #  infer things  #
