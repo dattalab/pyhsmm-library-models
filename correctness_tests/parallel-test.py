@@ -34,7 +34,7 @@ truemodel = HSMMIntNegBinVariant(
         obs_distns=GMMs,
         dur_distns=true_dur_distns)
 
-datas = [truemodel.rvs(10000)[5:] for i in range(4)]
+datas = [truemodel.generate(10000)[0][5:] for i in range(2)]
 
 #####################################
 #  set up FrozenMixture components  #
@@ -44,21 +44,18 @@ datas = [truemodel.rvs(10000)[5:] for i in range(4)]
 component_library = [c for m in GMMs for c in m.components]
 library_size = len(component_library)
 
-# initialize weights to indicator on one component
-init_weights = np.eye(library_size)
+Nmax = 4*library_size
 
 obs_distns = [FrozenMixtureDistribution(
     components=component_library,
-    alpha_0=4.,
-    weights=row)
-    for row in init_weights]
+    alpha_0=4.) for i in range(Nmax)]
 
 ################
 #  build HSMM  #
 ################
 
 dur_distns = [NegativeBinomialIntegerRVariantDuration(np.r_[0.,0,0,1,1,1,1,1],alpha_0=5.,beta_0=5.)
-        for state in range(library_size)]
+        for state in range(Nmax)]
 
 model = LibraryHSMMIntNegBinVariant(
         init_state_concentration=10.,
