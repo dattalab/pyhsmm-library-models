@@ -308,24 +308,10 @@ class LibraryHMM(pyhsmm.models.HMMEigen):
             for s,stateseq in zip(self.states_list,list_of_stateseqs):
                 s.stateseq = stateseq
 
-    def add_data_parallel(self,data,already_loaded=False,**kwargs):
-        # this method isn't inherited because we actually distribute the
-        # likelihoods, not the data
-        import pyhsmm.parallel
-        super(LibraryHMM,self).add_data(data=data,**kwargs)
-        pyhsmm.parallel.add_data((data,self.states_list[-1].precomputed_likelihoods),
-                already_loaded=already_loaded)
+    def _get_parallel_data(self,states_obj):
+        return (states_obj.data, states_obj.precomputed_likelihoods)
 
-    def _resample_states_parallel(self,temp=None):
-        import pyhsmm.parallel as parallel
-        states = self.states_list
-        self.states_list = [] # removed because we push the global model
-        raw_tuples = parallel.call_data_fn(
-                fn=self._state_sampler,
-                # NOTE: this next line is only difference from the parent
-                datas=[(s.data,s.precomputed_likelihoods) for s in states],
-                engine_globals=dict(global_model=self,temp=temp),
-                )
+    def _add_back_states_from_parallel(self,raw_tuples):
         for (data, precomputed_likelihoods), dct in raw_tuples:
             self.add_data(data=data,precomputed_likelihoods=precomputed_likelihoods,**dct)
 
@@ -387,21 +373,6 @@ class LibraryHSMMIntNegBinVariant(LibraryHMM,pyhsmm.models.HSMMIntNegBinVariant)
                 s.durations = durations
                 s.stateseq = np.asarray(stateseq_norep).repeat(durations)[:len(s.data)]
 
-    def _resample_states_parallel(self,temp=None):
-        import pyhsmm.parallel as parallel
-        states = self.states_list
-        self.states_list = [] # removed because we push the global model
-        raw_tuples = parallel.call_data_fn(
-                fn=self._state_sampler,
-                # NOTE: next two lines combine parents' behaviors
-                datas=[(s.data,s.precomputed_likelihoods) for s in states],
-                kwargss=[dict(trunc=s.trunc,left_censoring=s.left_censoring,
-                    right_censoring=s.right_censoring) for s in states],
-                engine_globals=dict(global_model=self,temp=temp),
-                )
-        for (data, precomputed_likelihoods), dct in raw_tuples:
-            self.add_data(data=data,precomputed_likelihoods=precomputed_likelihoods,**dct)
-
 class LibraryHSMMIntNegBinVariantIndepTrans(LibraryHSMMIntNegBinVariant):
     _states_class = LibraryHSMMStatesINBVIndepTrans
 
@@ -416,20 +387,9 @@ class LibraryHSMMIntNegBinVariantIndepTrans(LibraryHSMMIntNegBinVariant):
                 if s.group_id == group_id])
         self._clear_caches()
 
-    def _resample_states_parallel(self,temp=None):
-        import pyhsmm.parallel as parallel
-        states = self.states_list
-        self.states_list = [] # removed because we push the global model
-        raw_tuples = parallel.call_data_fn(
-                fn=self._state_sampler,
-                datas=[(s.data,s.precomputed_likelihoods) for s in states],
-                kwargss=[dict(trunc=s.trunc,left_censoring=s.left_censoring,
-                    right_censoring=s.right_censoring,
-                    group_id=s.group_id) for s in states],
-                engine_globals=dict(global_model=self,temp=temp),
-                )
-        for (data, precomputed_likelihoods), dct in raw_tuples:
-            self.add_data(data=data,precomputed_likelihoods=precomputed_likelihoods,**dct)
+    def _get_parallel_kwargss(self,states_objs):
+        outs = super(LibraryHSMMStatesINBVIndepTrans,self)._get_parallel_kwargss(states_objs)
+        return [dict(group_id=s.group_id,**out) for s,out in zip(states_objs,outs)]
 
 ### models that fix the syllables
 
