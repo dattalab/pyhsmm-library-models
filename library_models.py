@@ -3,9 +3,11 @@ import numpy as np
 na = np.newaxis
 import copy, os, hashlib, cPickle
 from warnings import warn
+from collections import defaultdict
 
 import pyhsmm
 from pyhsmm.util.stats import sample_discrete_from_log_2d_destructive
+from pyhsmm.util.general import engine_global_namespace
 
 ### frozen mixture distributions, which will be the obs distributions for the library models
 
@@ -30,7 +32,7 @@ class FrozenMixtureDistribution(pyhsmm.basic.models.MixtureDistribution):
         if os.path.isfile(filepath):
             with open(filepath,'r') as infile:
                 likelihoods, shifted_likelihoods, maxes = cPickle.load(infile)
-            print 'Loaded from cache: %s' % filename
+            # print 'Loaded from cache: %s' % filename
         else:
             likelihoods = np.empty((data.shape[0],len(self.components)))
             for idx, c in enumerate(self.components):
@@ -126,10 +128,14 @@ class LibraryMMLabels(pyhsmm.basic.pybasicbayes.internals.labels.Labels):
 
 class LibraryHMMStates(pyhsmm.internals.states.HMMStatesEigen):
     def __init__(self,data,precomputed_likelihoods=None,**kwargs):
-        super(LibraryHMMStates,self).__init__(data=data,**kwargs)
         if precomputed_likelihoods is None:
-            precomputed_likelihoods = self.obs_distns[0].get_all_likelihoods(data)
+            precomputed_likelihoods = kwargs['model'].obs_distns[0].get_all_likelihoods(data)
         self._likelihoods, self._shifted_likelihoods, self._maxes = precomputed_likelihoods
+        super(LibraryHMMStates,self).__init__(data=data,**kwargs)
+
+    @property
+    def precomputed_likelihoods(self):
+        return (self._likelihoods, self._shifted_likelihoods, self._maxes)
 
     @property
     def aBl(self):
@@ -144,14 +150,24 @@ class LibraryHMMStates(pyhsmm.internals.states.HMMStatesEigen):
 
 class LibraryHSMMStatesIntegerNegativeBinomialVariant(pyhsmm.internals.states.HSMMStatesIntegerNegativeBinomialVariant,LibraryHMMStates):
     def __init__(self,data,precomputed_likelihoods=None,**kwargs):
-        super(LibraryHSMMStatesIntegerNegativeBinomialVariant,self).__init__(data=data,**kwargs)
         if precomputed_likelihoods is None:
-            precomputed_likelihoods = self.obs_distns[0].get_all_likelihoods(data)
+            precomputed_likelihoods = kwargs['model'].obs_distns[0].get_all_likelihoods(data)
         self._likelihoods, self._shifted_likelihoods, self._maxes = precomputed_likelihoods
+        super(LibraryHSMMStatesIntegerNegativeBinomialVariant,self).__init__(data=data,**kwargs)
 
     @property
     def hsmm_aBl(self):
         return LibraryHMMStates.aBl.fget(self)
+
+class LibraryHSMMStatesINBVIndepTrans(LibraryHSMMStatesIntegerNegativeBinomialVariant):
+    def __init__(self,model,group_id,**kwargs):
+        self.group_id = group_id
+        self._trans_distn = model.trans_distns[group_id]
+        super(LibraryHSMMStatesINBVIndepTrans,self).__init__(model=model,**kwargs)
+
+    @property
+    def hsmm_trans_matrix(self):
+        return self._trans_distn.A
 
 ### models
 
@@ -233,13 +249,12 @@ class LibraryHMM(pyhsmm.models.HMMEigen):
 
     def log_likelihood(self,data=None,precomputed_likelihoods=None):
         if data is not None:
-            s = self._states_class(model=self,data=np.asarray(data),
-                    stateseq=np.zeros(len(data)), # placeholder
-                    precomputed_likelihoods=precomputed_likelihoods)
+            self.add_data(data=data,precomputed_likelihoods=precomputed_likelihoods)
+            s = self.states_list.pop()
             betal = s.messages_backwards()
-            return np.logaddexp.reduce(np.log(self.init_state_distn.pi_0) + betal[0] + s.aBl[0])
+            return np.logaddexp.reduce(np.log(s.pi_0) + betal[0] + s.aBl[0])
         else:
-            return super(LibraryHMM,self).log_likelihood(data=data)
+            return super(LibraryHMM,self).log_likelihood()
 
     def resample_obs_distns(self,**kwargs):
         for state, distn in enumerate(self.obs_distns):
@@ -293,6 +308,22 @@ class LibraryHMM(pyhsmm.models.HMMEigen):
             for s,stateseq in zip(self.states_list,list_of_stateseqs):
                 s.stateseq = stateseq
 
+    def _get_parallel_data(self,states_obj):
+        return (states_obj.data, states_obj.precomputed_likelihoods)
+
+    def _add_back_states_from_parallel(self,raw_tuples):
+        for (data, precomputed_likelihoods), dct in raw_tuples:
+            self.add_data(data=data,precomputed_likelihoods=precomputed_likelihoods,**dct)
+
+    @staticmethod
+    @engine_global_namespace # access to engine globals
+    def _state_sampler((data,precomputed_likelihoods),**kwargs):
+        # expects globals: global_model, temp
+        global_model.add_data(data=data,precomputed_likelihoods=precomputed_likelihoods,
+                initialize_from_prior=False,temp=temp,**kwargs)
+        stateseq = global_model.states_list.pop().stateseq
+        return dict(stateseq=stateseq,**kwargs)
+
 class LibraryHSMMIntNegBinVariant(LibraryHMM,pyhsmm.models.HSMMIntNegBinVariant):
     _states_class = LibraryHSMMStatesIntegerNegativeBinomialVariant
 
@@ -300,6 +331,17 @@ class LibraryHSMMIntNegBinVariant(LibraryHMM,pyhsmm.models.HSMMIntNegBinVariant)
         assert all(isinstance(o,FrozenMixtureDistribution) for o in obs_distns) \
                 and all(o.components is obs_distns[0].components for o in obs_distns)
         pyhsmm.models.HSMMIntNegBinVariant.__init__(self,obs_distns,*args,**kwargs)
+
+    def log_likelihood(self,data=None,precomputed_likelihoods=None,**kwargs):
+        if data is not None:
+            self.add_data(data=data,precomputed_likelihoods=precomputed_likelihoods,**kwargs)
+            s = self.states_list.pop()
+            betal,superbetal = s.messages_backwards()
+            return np.logaddexp.reduce(np.log(s.pi_0) + betal[0] + s.aBl[0])
+        else:
+            # import pudb
+            # pudb.set_trace()
+            return super(LibraryHSMMIntNegBinVariant,self).log_likelihood()
 
     def Viterbi_EM_step(self):
         super(LibraryHSMMIntNegBinVariant,self).Viterbi_EM_step()
@@ -331,6 +373,23 @@ class LibraryHSMMIntNegBinVariant(LibraryHMM,pyhsmm.models.HSMMIntNegBinVariant)
                 s.durations = durations
                 s.stateseq = np.asarray(stateseq_norep).repeat(durations)[:len(s.data)]
 
+class LibraryHSMMIntNegBinVariantIndepTrans(LibraryHSMMIntNegBinVariant):
+    _states_class = LibraryHSMMStatesINBVIndepTrans
+
+    def __init__(self,*args,**kwargs):
+        super(LibraryHSMMIntNegBinVariantIndepTrans,self).__init__(*args,**kwargs)
+        # self.trans_distn is a template object for all the trans distns
+        self.trans_distns = defaultdict(lambda: copy.deepcopy(self.trans_distn))
+
+    def resample_trans_distn(self):
+        for group_id, trans_distn in self.trans_distns.iteritems():
+            trans_distn.resample([s.stateseq for s in self.states_list
+                if s.group_id == group_id])
+        self._clear_caches()
+
+    def _get_parallel_kwargss(self,states_objs):
+        outs = super(LibraryHSMMStatesINBVIndepTrans,self)._get_parallel_kwargss(states_objs)
+        return [dict(group_id=s.group_id,**out) for s,out in zip(states_objs,outs)]
 
 ### models that fix the syllables
 

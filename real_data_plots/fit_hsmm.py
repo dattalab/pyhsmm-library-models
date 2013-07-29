@@ -6,7 +6,7 @@ import pyhsmm
 import library_models
 from pyhsmm.util.text import progprint_xrange
 
-num_iter = 200
+num_iter = 10
 training_slice = slice(0,10000)
 
 #############
@@ -15,8 +15,8 @@ training_slice = slice(0,10000)
 
 ### data
 
-f = np.load('/scratch/TMT_50p_5-8-13_processed_notpca.npz')
-# f = np.load('/Users/mattjj/Desktop/TMT_50p_5-8-13_processed_notpca.npz')
+# f = np.load('/scratch/TMT_50p_5-8-13_processed_notpca.npz')
+f = np.load('/Users/mattjj/Desktop/TMT_50p_5-8-13_processed_notpca.npz')
 data = f['data']
 mus = f['mu']
 sigmas = f['sigma']

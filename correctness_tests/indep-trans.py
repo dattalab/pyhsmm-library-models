@@ -4,7 +4,7 @@ from matplotlib import pyplot as plt
 
 from pyhsmm.models import HSMMIntNegBinVariant
 from pyhsmm.basic.models import MixtureDistribution
-from library_models import FrozenMixtureDistribution, LibraryHSMMIntNegBinVariant
+from library_models import FrozenMixtureDistribution, LibraryHSMMIntNegBinVariantIndepTrans
 from pyhsmm.basic.distributions import Gaussian, NegativeBinomialIntegerRVariantDuration
 from pyhsmm.util.text import progprint_xrange
 
@@ -30,8 +30,11 @@ truemodel = HSMMIntNegBinVariant(
         obs_distns=GMMs,
         dur_distns=true_dur_distns)
 
-training_datas = [truemodel.generate(500)[0] for i in range(5)]
-test_data = truemodel.generate(100)[0]
+training_datas = {}
+for group_id in range(2):
+    for i in range(2):
+        training_datas[group_id] = truemodel.generate(500)[0]
+    truemodel.trans_distn.resample() # new transition matrix for the next group
 
 #####################################
 #  set up FrozenMixture components  #
@@ -57,29 +60,23 @@ obs_distns = [FrozenMixtureDistribution(
 dur_distns = [NegativeBinomialIntegerRVariantDuration(np.r_[0.,0,0,0,0,1,1,1],alpha_0=5.,beta_0=5.)
         for state in range(library_size)]
 
-model = LibraryHSMMIntNegBinVariant(
+model = LibraryHSMMIntNegBinVariantIndepTrans(
         init_state_concentration=10.,
         alpha=6.,gamma=6.,
         obs_distns=obs_distns,
         dur_distns=dur_distns)
 
-for data in training_datas:
-    model.add_data(data,left_censoring=True)
+for group_id, data in training_datas.iteritems():
+    model.add_data(data,group_id=group_id,left_censoring=True)
 
 ##################
 #  infer things  #
 ##################
 
 train_likes = []
-test_likes = []
 
 for i in progprint_xrange(50):
     model.resample_model()
-    train_likes.append(model.log_likelihood())
-    test_likes.append(model.log_likelihood(test_data,left_censoring=True))
-
-print 'training data likelihood when in the model: %g' % model.log_likelihood()
-print 'training data likelihood passed in externally: %g' % sum(model.log_likelihood(data,left_censoring=True) for data in training_datas)
 
 plt.figure()
 truemodel.plot()
@@ -88,11 +85,6 @@ plt.gcf().suptitle('truth')
 plt.figure()
 model.plot()
 plt.gcf().suptitle('inferred')
-
-plt.figure()
-plt.plot(train_likes,label='training')
-plt.plot(test_likes,label='test')
-plt.legend()
 
 plt.show()
 

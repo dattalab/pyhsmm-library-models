@@ -13,8 +13,8 @@ from pyhsmm.util.text import progprint_xrange
 #############################
 
 states_in_hsmm = 5
-components_per_GMM = 3
-component_hyperparameters = dict(mu_0=np.zeros(2),sigma_0=np.eye(2),kappa_0=0.025,nu_0=3)
+components_per_GMM = 2
+component_hyperparameters = dict(mu_0=np.zeros(2),sigma_0=np.eye(2),kappa_0=0.01,nu_0=3)
 
 GMMs = [MixtureDistribution(
     alpha_0=4.,
@@ -62,7 +62,7 @@ model = LibraryHSMMIntNegBinVariant(
         obs_distns=obs_distns,
         dur_distns=dur_distns)
 
-model.add_data(data)
+model.add_data(data,left_censoring=True)
 
 ##################
 #  infer things  #
