@@ -72,7 +72,7 @@ for data in training_datas:
 samples1 = [model.resample_and_copy() for i in progprint_xrange(1)]
 samples2 = [model.resample_and_copy() for i in progprint_xrange(10)]
 samples3 = [model.resample_and_copy() for i in progprint_xrange(100)]
-samples4 = [model.resample_and_copy() for i in progprint_xrange(1000)]
+# samples4 = [model.resample_and_copy() for i in progprint_xrange(1000)]
 
 import cPickle
 with open('samples1','w') as outfile:
@@ -84,6 +84,6 @@ with open('samples2','w') as outfile:
 with open('samples3','w') as outfile:
     cPickle.dump(samples3,outfile,protocol=-1)
 
-with open('samples4','w') as outfile:
-    cPickle.dump(samples3,outfile,protocol=-1)
+# with open('samples4','w') as outfile:
+#     cPickle.dump(samples3,outfile,protocol=-1)
 
