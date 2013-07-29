@@ -2,15 +2,11 @@ from __future__ import division
 import numpy as np
 from matplotlib import pyplot as plt
 
-from IPython.parallel import Client
-dv = Client()[:]
-
-with dv.sync_imports():
-    from pyhsmm.models import HSMMIntNegBinVariant
-    from pyhsmm.basic.models import MixtureDistribution
-    from library_models import FrozenMixtureDistribution, LibraryHSMMIntNegBinVariant
-    from pyhsmm.basic.distributions import Gaussian, NegativeBinomialIntegerRVariantDuration
-    from pyhsmm.util.text import progprint_xrange
+from pyhsmm.models import HSMMIntNegBinVariant
+from pyhsmm.basic.models import MixtureDistribution
+from library_models import FrozenMixtureDistribution, LibraryHSMMIntNegBinVariant
+from pyhsmm.basic.distributions import Gaussian, NegativeBinomialIntegerRVariantDuration
+from pyhsmm.util.text import progprint_xrange
 
 #############################
 #  generate synthetic data  #
@@ -63,18 +59,8 @@ model = LibraryHSMMIntNegBinVariant(
         obs_distns=obs_distns,
         dur_distns=dur_distns)
 
-# NOTE: here's the parallel boilerplate stuff
-import parallel
-parallel.alldata = dict(enumerate(datas))
-o = model.obs_distns[0]
-parallel.alllikelihoods = dict((dataid,o.get_all_likelihoods(d)) for dataid, d in parallel.alldata.iteritems())
-
-# NOTE: this part sends ALL the data to EACH client TODO improve
-dv['alldata'] = parallel.alldata
-dv['alllikelihoods'] = parallel.alllikelihoods
-
-for i in parallel.alldata.keys():
-    model.add_data_parallel(i,left_censoring=True)
+for data in datas:
+    model.add_data_parallel(data,left_censoring=True)
 
 ##################
 #  infer things  #
