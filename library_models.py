@@ -69,7 +69,7 @@ class FrozenMixtureDistribution(pyhsmm.basic.models.MixtureDistribution):
                 if temp is not None:
                     scores /= temp
 
-                scores = np.clip(scores, -1e200, 1e200) # TODO: HACK HACK HACK
+                scores_in = scores.copy() # TODO TODO HACK HACK REMOVE
                 z = sample_discrete_from_log_2d_destructive(scores)
 
                 if hasattr(self.weights,'resample_just_weights'):
@@ -310,6 +310,10 @@ class LibraryHMM(pyhsmm.models.HMMEigen):
 
     def _get_parallel_data(self,states_obj):
         return (states_obj.data, states_obj.precomputed_likelihoods)
+
+    @staticmethod
+    def _parallel_costfunc((data, precomputed_likelihoods)):
+        return data.shape[0]
 
     def _add_back_states_from_parallel(self,raw_tuples):
         for (data, precomputed_likelihoods), dct in raw_tuples:
