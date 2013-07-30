@@ -67,6 +67,6 @@ for data in training_datas:
 ##################
 
 
-for i in progprint_xrange(25):
+for i in progprint_xrange(10):
     model.resample_model_parallel()
 
