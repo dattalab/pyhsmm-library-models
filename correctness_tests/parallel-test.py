@@ -1,4 +1,12 @@
 from __future__ import division
+
+# from IPython.parallel import Client
+# Client()[:].execute(
+# '''
+# import __builtin__
+# __builtin__.__dict__['profile'] = lambda x: x
+# ''')
+
 import numpy as np
 from matplotlib import pyplot as plt
 
@@ -30,7 +38,7 @@ truemodel = HSMMIntNegBinVariant(
         obs_distns=GMMs,
         dur_distns=true_dur_distns)
 
-datas = [truemodel.generate(10000)[0][5:] for i in range(2)]
+datas = [truemodel.generate(40000)[0][5:] for i in range(2)]
 
 #####################################
 #  set up FrozenMixture components  #
@@ -66,15 +74,15 @@ for data in datas:
 #  infer things  #
 ##################
 
-for i in progprint_xrange(50):
+for i in progprint_xrange(25):
     model.resample_model_parallel()
 
-plt.figure()
-truemodel.plot()
-plt.gcf().suptitle('truth')
+# plt.figure()
+# truemodel.plot()
+# plt.gcf().suptitle('truth')
 
-plt.figure()
-model.plot()
-plt.gcf().suptitle('inferred')
+# plt.figure()
+# model.plot()
+# plt.gcf().suptitle('inferred')
 
-plt.show()
+# plt.show()
