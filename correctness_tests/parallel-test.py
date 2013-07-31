@@ -1,11 +1,11 @@
 from __future__ import division
 
-# from IPython.parallel import Client
-# Client()[:].execute(
-# '''
-# import __builtin__
-# __builtin__.__dict__['profile'] = lambda x: x
-# ''')
+from IPython.parallel import Client
+Client()[:].execute(
+'''
+import __builtin__
+__builtin__.__dict__['profile'] = lambda x: x
+''')
 
 import numpy as np
 from matplotlib import pyplot as plt
@@ -38,7 +38,7 @@ truemodel = HSMMIntNegBinVariant(
         obs_distns=GMMs,
         dur_distns=true_dur_distns)
 
-datas = [truemodel.generate(40000)[0][5:] for i in range(2)]
+datas = [truemodel.generate(40000)[0][5:] for i in range(6)]
 
 #####################################
 #  set up FrozenMixture components  #
