@@ -309,14 +309,15 @@ class LibraryHMM(pyhsmm.models.HMMEigen):
                 s.stateseq = stateseq
 
     def _get_parallel_data(self,states_obj):
+        # TODO don't need to include data here
         return (states_obj.data, states_obj.precomputed_likelihoods)
 
     @staticmethod
     def _parallel_costfunc((data, precomputed_likelihoods)):
         return data.shape[0]
 
-    def _add_back_states_from_parallel(self,raw_tuples):
-        for (data, precomputed_likelihoods), dct in raw_tuples:
+    def _add_back_states_from_parallel(self,datas,raw):
+        for (data, precomputed_likelihoods), dct in zip(datas,raw):
             self.add_data(data=data,precomputed_likelihoods=precomputed_likelihoods,**dct)
 
     @staticmethod
