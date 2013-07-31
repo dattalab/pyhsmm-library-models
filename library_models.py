@@ -308,26 +308,60 @@ class LibraryHMM(pyhsmm.models.HMMEigen):
             for s,stateseq in zip(self.states_list,list_of_stateseqs):
                 s.stateseq = stateseq
 
-    def _get_parallel_data(self,states_obj):
-        # TODO don't need to include data here
-        return (states_obj.data, states_obj.precomputed_likelihoods)
+    def add_data_parallel(self,data,**kwargs):
+        import pyhsmm.parallel as parallel
+        self.add_data(data=data,**kwargs)
+        parallel.broadcast_data(self.states_list[-1].precomputed_likelihoods,
+                costfunc=lambda x: x[0].shape[0])
 
-    @staticmethod
-    def _parallel_costfunc((data, precomputed_likelihoods)):
-        return data.shape[0]
-
-    def _add_back_states_from_parallel(self,datas,raw):
-        for (data, precomputed_likelihoods), dct in zip(datas,raw):
-            self.add_data(data=data,precomputed_likelihoods=precomputed_likelihoods,**dct)
+    def resample_states_parallel(self,temp=None):
+        import pyhsmm.parallel as parallel
+        states = self.states_list
+        self.states_list = [] # removed because we push the global model
+        raw = parallel.map_on_each(
+                self._state_sampler,
+                [s.precomputed_likelihoods for s in states],
+                kwargss=self._get_parallel_kwargss(states),
+                engine_globals=dict(global_model=self,temp=temp), # TODO compactify
+                )
+        self.states_list = states
+        for s, stateseq in zip(self.states_list,raw):
+            s.stateseq = stateseq
 
     @staticmethod
     @engine_global_namespace # access to engine globals
-    def _state_sampler((data,precomputed_likelihoods),**kwargs):
+    def _state_sampler(precomputed_likelihoods,**kwargs):
         # expects globals: global_model, temp
-        global_model.add_data(data=data,precomputed_likelihoods=precomputed_likelihoods,
+        global_model.add_data(
+                data=precomputed_likelihoods[0], # dummy
+                precomputed_likelihoods=precomputed_likelihoods,
                 initialize_from_prior=False,temp=temp,**kwargs)
-        stateseq = global_model.states_list.pop().stateseq
-        return dict(stateseq=stateseq,**kwargs)
+        return global_model.states_list.pop().stateseq
+
+    def resample_obs_distns_parallel(self):
+        import pyhsmm.parallel as parallel
+        first_call = hasattr(self,'_called_resample_obs_distns_parallel')
+        # NOTE: don't really need to transmit weights
+        raw = parallel.call_with_all(
+                self._obs_sampler,
+                [s.precomputed_likelihoods for s in self.states_list],
+                kwargss=[dict(weights=o.weights.weights,
+                      indicess=[s.stateseq == i for s in self.states_list])
+                    for i,o in enumerate(self.obs_distns)],
+                engine_globals=dict(obs_distn_template=self.obs_distns[0])
+                    if not first_call else None
+                )
+        self._called_resample_obs_distns_parallel = True
+        for o,weights in zip(self.obs_distns,raw):
+            o.weights.weights = weights
+
+    @staticmethod
+    @engine_global_namespace # access to engine globals
+    def _obs_sampler(precomputed_likelihoodss,weights,indicess):
+        obs_distn_template.weights.weights = weights # don't really need this
+        obs_distn_template.resample_from_likelihoods([precomputed_likelihoods[0][indices]
+            for precomputed_likelihoods, indices in zip(precomputed_likelihoodss,indicess)])
+        return obs_distn_template.weights.weights
 
 class LibraryHSMMIntNegBinVariant(LibraryHMM,pyhsmm.models.HSMMIntNegBinVariant):
     _states_class = LibraryHSMMStatesIntegerNegativeBinomialVariant
