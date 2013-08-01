@@ -8,12 +8,12 @@ from library_models import FrozenMixtureDistribution, LibraryHSMMIntNegBinVarian
 from pyhsmm.basic.distributions import Gaussian, NegativeBinomialIntegerRVariantDuration
 from pyhsmm.util.text import progprint_xrange
 
-from IPython.parallel import Client
-Client()[:].execute(
-'''
-import __builtin__
-__builtin__.__dict__['profile'] = lambda x: x
-''')
+# from IPython.parallel import Client
+# Client()[:].execute(
+# '''
+# import __builtin__
+# __builtin__.__dict__['profile'] = lambda x: x
+# ''')
 
 ###############
 #  load data  #
@@ -25,7 +25,11 @@ means = f['means']
 sigmas = f['sigmas']
 labels = f['labels']
 
-training_datas = np.array_split(alldata,2)
+# NOTE: artificially making data bigger
+
+alldata = np.tile(alldata,(2,1))
+
+training_datas = np.array_split(alldata,6)
 
 #####################################
 #  set up FrozenMixture components  #
@@ -60,7 +64,8 @@ model = LibraryHSMMIntNegBinVariant(
         dur_distns=dur_distns)
 
 for data in training_datas:
-    model.add_data_parallel(data,left_censoring=True)
+    # model.add_data_parallel(data,left_censoring=True)
+    model.add_data(data,left_censoring=True)
 
 ##################
 #  infer things  #
@@ -68,5 +73,6 @@ for data in training_datas:
 
 
 for i in progprint_xrange(10):
-    model.resample_model_parallel()
+    # model.resample_model_parallel()
+    model.resample_model()
 
