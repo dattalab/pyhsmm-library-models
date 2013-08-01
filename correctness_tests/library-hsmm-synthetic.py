@@ -30,7 +30,7 @@ truemodel = HSMMIntNegBinVariant(
         obs_distns=GMMs,
         dur_distns=true_dur_distns)
 
-training_datas = [truemodel.generate(500)[0] for i in range(5)]
+training_datas = [truemodel.generate(10000)[0] for i in range(5)]
 test_data = truemodel.generate(100)[0]
 
 #####################################
@@ -70,29 +70,29 @@ for data in training_datas:
 #  infer things  #
 ##################
 
-train_likes = []
-test_likes = []
+# train_likes = []
+# test_likes = []
 
-for i in progprint_xrange(50):
-    model.resample_model()
-    train_likes.append(model.log_likelihood())
-    test_likes.append(model.log_likelihood(test_data,left_censoring=True))
+# for i in progprint_xrange(50):
+#     model.resample_model()
+#     train_likes.append(model.log_likelihood())
+#     test_likes.append(model.log_likelihood(test_data,left_censoring=True))
 
-print 'training data likelihood when in the model: %g' % model.log_likelihood()
-print 'training data likelihood passed in externally: %g' % sum(model.log_likelihood(data,left_censoring=True) for data in training_datas)
+# print 'training data likelihood when in the model: %g' % model.log_likelihood()
+# print 'training data likelihood passed in externally: %g' % sum(model.log_likelihood(data,left_censoring=True) for data in training_datas)
 
-plt.figure()
-truemodel.plot()
-plt.gcf().suptitle('truth')
+# plt.figure()
+# truemodel.plot()
+# plt.gcf().suptitle('truth')
 
-plt.figure()
-model.plot()
-plt.gcf().suptitle('inferred')
+# plt.figure()
+# model.plot()
+# plt.gcf().suptitle('inferred')
 
-plt.figure()
-plt.plot(train_likes,label='training')
-plt.plot(test_likes,label='test')
-plt.legend()
+# plt.figure()
+# plt.plot(train_likes,label='training')
+# plt.plot(test_likes,label='test')
+# plt.legend()
 
-plt.show()
+# plt.show()
 
