@@ -369,7 +369,7 @@ class LibraryHSMMIntNegBinVariant(LibraryHMM,pyhsmm.models.HSMMIntNegBinVariant)
     def __init__(self,obs_distns,*args,**kwargs):
         assert all(isinstance(o,FrozenMixtureDistribution) for o in obs_distns) \
                 and all(o.components is obs_distns[0].components for o in obs_distns)
-        pyhsmm.models.HSMMIntNegBinVariant.__init__(self,obs_distns,*args,**kwargs)
+        pyhsmm.models.HSMMIntNegBinVariant.__init__(self,obs_distns=obs_distns,*args,**kwargs)
 
     def log_likelihood(self,data=None,precomputed_likelihoods=None,**kwargs):
         if data is not None:
