@@ -17,9 +17,9 @@ alldata = f['data']
 means = f['means']
 sigmas = f['sigmas']
 
-# training_data = alldata[10000:15000]
-training_data = alldata[:30000] # NOTE: cutting data in half
-test_data = alldata[30000:40000]
+all_training_data = alldata[:60000]
+training_datas = np.array_split(all_training_data,6)
+test_data = alldata[-10000:]
 
 #####################################
 #  set up FrozenMixture components  #
@@ -55,8 +55,9 @@ model = LibraryHSMMIntNegBinVariant(
         obs_distns=obs_distns,
         dur_distns=dur_distns)
 
-# model.add_data_parallel(data,left_censoring=True)
-model.add_data(training_data,left_censoring=True)
+for data in training_datas:
+    model.add_data_parallel(data,left_censoring=True)
+    # model.add_data(data,left_censoring=True)
 
 ##################
 #  infer things  #
@@ -64,23 +65,17 @@ model.add_data(training_data,left_censoring=True)
 
 
 train_likes = []
-test_likes = []
 for i in progprint_xrange(50):
-    # model.resample_model_parallel()
-    model.resample_model()
+    model.resample_model_parallel()
+    # model.resample_model()
     train_likes.append(model.log_likelihood())
-    test_likes.append(model.log_likelihood(test_data))
 
 ##########
 #  plot  #
 ##########
 
 plt.figure()
-plt.subplot(2,1,1)
 plt.plot(train_likes,label='training')
-plt.legend()
-plt.subplot(2,1,2)
-plt.plot(test_likes,label='test')
 plt.legend()
 
 plt.show()

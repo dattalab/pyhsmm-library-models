@@ -148,6 +148,10 @@ class LibraryHMMStates(pyhsmm.internals.states.HMMStatesEigen):
             self._aBl = np.nan_to_num(scores)
         return self._aBl
 
+    def clear_caches(self):
+        self._like = None
+        super(LibraryHMMStates,self).clear_caches()
+
 class LibraryHSMMStatesIntegerNegativeBinomialVariant(pyhsmm.internals.states.HSMMStatesIntegerNegativeBinomialVariant,LibraryHMMStates):
     def __init__(self,data,precomputed_likelihoods=None,**kwargs):
         if precomputed_likelihoods is None:
@@ -159,6 +163,10 @@ class LibraryHSMMStatesIntegerNegativeBinomialVariant(pyhsmm.internals.states.HS
     def hsmm_aBl(self):
         return LibraryHMMStates.aBl.fget(self)
 
+    def clear_caches(self):
+        self._like = None
+        super(LibraryHSMMStatesIntegerNegativeBinomialVariant,self).clear_caches()
+
 class LibraryHSMMStatesINBVIndepTrans(LibraryHSMMStatesIntegerNegativeBinomialVariant):
     def __init__(self,model,group_id,**kwargs):
         self.group_id = group_id
@@ -168,6 +176,10 @@ class LibraryHSMMStatesINBVIndepTrans(LibraryHSMMStatesIntegerNegativeBinomialVa
     @property
     def hsmm_trans_matrix(self):
         return self._trans_distn.A
+
+    def clear_caches(self):
+        self._like = None
+        super(LibraryHSMMStatesINBVIndepTrans,self).clear_caches()
 
 ### models
 
@@ -254,7 +266,12 @@ class LibraryHMM(pyhsmm.models.HMMEigen):
             betal = s.messages_backwards()
             return np.logaddexp.reduce(np.log(s.pi_0) + betal[0] + s.aBl[0])
         else:
-            return super(LibraryHMM,self).log_likelihood()
+            if hasattr(self,'_last_resample_used_temp') and self._last_resample_used_temp:
+                self._clear_caches()
+            if all(hasattr(s,'_like') and s._like is not None for s in self.states_list):
+                return sum(s._like for s in self.states_list)
+            else:
+                return super(LibraryHMM,self).log_likelihood()
 
     def resample_obs_distns(self,**kwargs):
         for state, distn in enumerate(self.obs_distns):
@@ -322,21 +339,24 @@ class LibraryHMM(pyhsmm.models.HMMEigen):
                 self._state_sampler,
                 [s.precomputed_likelihoods for s in states],
                 kwargss=self._get_parallel_kwargss(states),
-                engine_globals=dict(global_model=self,temp=temp), # TODO compactify
+                engine_globals=dict(global_model=self,temp=temp),
                 )
         self.states_list = states
-        for s, stateseq in zip(self.states_list,raw):
+        for s, (stateseq,like) in zip(self.states_list,raw):
             s.stateseq = stateseq
+            s._like = like
 
     @staticmethod
     @engine_global_namespace # access to engine globals
     def _state_sampler(precomputed_likelihoods,**kwargs):
         # expects globals: global_model, temp
+        assert len(global_model.states_list) == 0
         global_model.add_data(
                 data=precomputed_likelihoods[0], # dummy
                 precomputed_likelihoods=precomputed_likelihoods,
                 initialize_from_prior=False,temp=temp,**kwargs)
-        return global_model.states_list.pop().stateseq
+        like = global_model.log_likelihood()
+        return global_model.states_list.pop().stateseq, like
 
     def resample_obs_distns_parallel(self):
         import pyhsmm.parallel as parallel
@@ -378,9 +398,12 @@ class LibraryHSMMIntNegBinVariant(LibraryHMM,pyhsmm.models.HSMMIntNegBinVariant)
             betal,superbetal = s.messages_backwards()
             return np.logaddexp.reduce(np.log(s.pi_0) + betal[0] + s.aBl[0])
         else:
-            # import pudb
-            # pudb.set_trace()
-            return super(LibraryHSMMIntNegBinVariant,self).log_likelihood()
+            if hasattr(self,'_last_resample_used_temp') and self._last_resample_used_temp:
+                self._clear_caches()
+            if all(hasattr(s,'_like') and s._like is not None for s in self.states_list):
+                return sum(s._like for s in self.states_list)
+            else:
+                return super(LibraryHSMMIntNegBinVariant,self).log_likelihood()
 
     def Viterbi_EM_step(self):
         super(LibraryHSMMIntNegBinVariant,self).Viterbi_EM_step()
