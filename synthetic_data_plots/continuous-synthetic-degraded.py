@@ -74,12 +74,10 @@ hsmm = LibraryHSMMIntNegBinVariant(
         obs_distns=obs_distns,
         dur_distns=dur_distns)
 for data in training_datas:
-    hsmm.add_data(data)
+    hsmm.add_data(data,left_censoring=True)
 
 for itr in progprint_xrange(resample_iter):
     hsmm.resample_model()
-
-models['HSMM'] = hsmm
 
 ### degrade into HMM, use the same learned syllables!
 
@@ -93,8 +91,6 @@ for data in training_datas:
 for itr in progprint_xrange(resample_iter):
     hmm.resample_model()
 
-models['HMM'] = hmm
-
 ### degrade into GMM, use the same learned syllables!
 
 gmm = LibraryMMFixedObs(
@@ -106,16 +102,17 @@ for data in training_datas:
 for itr in progprint_xrange(resample_iter):
     gmm.resample_model()
 
-models['GMM'] = gmm
-
 ##########
 #  plot  #
 ##########
 
 indices = range(1,100,1)
 
-likelihoods = collections.OrderedDict((name,m.predictive_likelihoods(test_data,indices))
-        for name,m in models.iteritems())
+likelihoods = collections.OrderedDict((
+        ('HSMM',hsmm.predictive_likelihoods(test_data,indices,left_censoring=True)),
+        ('HMM',hmm.predictive_likelihoods(test_data,indices)),
+        ('GMM',gmm.predictive_likelihoods(test_data,indices)),
+        ))
 
 plt.figure()
 for name, ls in likelihoods.iteritems():
