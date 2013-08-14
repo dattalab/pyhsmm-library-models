@@ -127,10 +127,11 @@ class LibraryMMLabels(pyhsmm.basic.pybasicbayes.internals.labels.Labels):
         self.z = sample_discrete_from_log_2d_destructive(scores)
 
 class LibraryHMMStates(pyhsmm.internals.states.HMMStatesEigen):
-    def __init__(self,data,precomputed_likelihoods=None,**kwargs):
-        if precomputed_likelihoods is None:
-            precomputed_likelihoods = kwargs['model'].obs_distns[0].get_all_likelihoods(data)
-        self._likelihoods, self._shifted_likelihoods, self._maxes = precomputed_likelihoods
+    def __init__(self,data=None,precomputed_likelihoods=None,**kwargs):
+        if data is not None:
+            if precomputed_likelihoods is None:
+                precomputed_likelihoods = kwargs['model'].obs_distns[0].get_all_likelihoods(data)
+            self._likelihoods, self._shifted_likelihoods, self._maxes = precomputed_likelihoods
         super(LibraryHMMStates,self).__init__(data=data,**kwargs)
 
     @property
@@ -153,10 +154,11 @@ class LibraryHMMStates(pyhsmm.internals.states.HMMStatesEigen):
         super(LibraryHMMStates,self).clear_caches()
 
 class LibraryHSMMStatesIntegerNegativeBinomialVariant(pyhsmm.internals.states.HSMMStatesIntegerNegativeBinomialVariant,LibraryHMMStates):
-    def __init__(self,data,precomputed_likelihoods=None,**kwargs):
-        if precomputed_likelihoods is None:
-            precomputed_likelihoods = kwargs['model'].obs_distns[0].get_all_likelihoods(data)
-        self._likelihoods, self._shifted_likelihoods, self._maxes = precomputed_likelihoods
+    def __init__(self,data=None,precomputed_likelihoods=None,**kwargs):
+        if data is not None:
+            if precomputed_likelihoods is None:
+                precomputed_likelihoods = kwargs['model'].obs_distns[0].get_all_likelihoods(data)
+            self._likelihoods, self._shifted_likelihoods, self._maxes = precomputed_likelihoods
         super(LibraryHSMMStatesIntegerNegativeBinomialVariant,self).__init__(data=data,**kwargs)
 
     @property
