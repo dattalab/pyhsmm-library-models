@@ -64,8 +64,8 @@ model = LibraryHSMMIntNegBinVariant(
         dur_distns=dur_distns)
 
 for data in training_datas:
-    # model.add_data(data,left_censoring=True)
-    model.add_data_parallel(data,left_censoring=True)
+    model.add_data(data,left_censoring=True)
+    # model.add_data_parallel(data,left_censoring=True)
 
 ##################
 #  infer things  #
@@ -75,8 +75,8 @@ train_likes = []
 test_likes = []
 
 for i in progprint_xrange(50):
-    # model.resample_model()
-    model.resample_model_parallel()
+    model.resample_model()
+    # model.resample_model_parallel()
     train_likes.append(model.log_likelihood())
     # test_likes.append(model.log_likelihood(test_data,left_censoring=True))
 
