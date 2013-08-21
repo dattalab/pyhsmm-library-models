@@ -305,16 +305,20 @@ class LibraryHMM(pyhsmm.models.HMMEigen):
         most_popular = np.argsort(counts)[-target_num:]
 
         # limit trans distn, obs distns, dur distns, initial distn
-        new.trans_distn.beta = new.trans_distn.beta[most_popular]
-        new.trans_distn.A = new.trans_distn.A[np.ix_(most_popular,most_popular)]
-        new.trans_distn.fullA = new.trans_distn.fullA[np.ix_(most_popular,most_popular)]
         new.trans_distn.state_dim = target_num
+        new.trans_distn.beta = new.trans_distn.beta[most_popular]
+        new.trans_distn.beta /= new.trans_distn.beta.sum()
+        new.trans_distn.A = new.trans_distn.A[np.ix_(most_popular,most_popular)]
+        new.trans_distn.A /= new.trans_distn.A.sum(1)[:,na]
+        new.trans_distn.fullA = new.trans_distn.fullA[np.ix_(most_popular,most_popular)]
+        new.trans_distn.fullA /= new.trans_distn.fullA.sum(1)[:,na]
 
         new.obs_distns = [o for i,o in enumerate(new.obs_distns) if i in most_popular]
 
         new.dur_distns = [o for i,o in enumerate(new.dur_distns) if i in most_popular]
 
         new.init_state_distn.weights = new.init_state_distn.weights[most_popular]
+        new.init_state_distn.weights /= new.init_state_distn.weights.sum()
 
         # set new state sequences to viterbi decodings given the new limited
         # parameters
