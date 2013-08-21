@@ -289,6 +289,42 @@ class LibraryHMM(pyhsmm.models.HMMEigen):
         # transition parameters (requiring more than just the marginal expectations)
         self.trans_distn.max_likelihood([s.stateseq for s in self.states_list])
 
+    def truncate_num_states(self,target_num,destructive=False):
+        if not destructive:
+            datas = [s.data for s in self.states_list]
+            self.remove_data_refs()
+            new = copy.deepcopy(self)
+            for data, s1, s2 in zip(datas,self.states_list,new.states_list):
+                s1.data = s2.data = data
+        else:
+            new = self
+
+        # find most popular states
+        counts = sum(np.bincount(s,minlength=len(self.obs_distns))
+                for s in self.stateseqs_norep)
+        most_popular = np.argsort(counts)[-target_num:]
+
+        # limit trans distn, obs distns, dur distns, initial distn
+        new.trans_distn.beta = new.trans_distn.beta[most_popular]
+        new.trans_distn.A = new.trans_distn.A[np.ix_(most_popular,most_popular)]
+        new.trans_distn.fullA = new.trans_distn.fullA[np.ix_(most_popular,most_popular)]
+        new.trans_distn.state_dim = target_num
+
+        new.obs_distns = [o for i,o in enumerate(new.obs_distns) if i in most_popular]
+
+        new.dur_distns = [o for i,o in enumerate(new.dur_distns) if i in most_popular]
+
+        new.init_state_distn.weights = new.init_state_distn.weights[most_popular]
+
+        # set new state sequences to viterbi decodings given the new limited
+        # parameters
+        new.state_dim = target_num
+        for s in new.states_list:
+            s.clear_caches()
+            s.Viterbi()
+
+        return new
+
     def remove_data_refs(self):
         for s in self.states_list:
             del s.data
