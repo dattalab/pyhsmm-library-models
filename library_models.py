@@ -336,6 +336,9 @@ class LibraryHMM(pyhsmm.models.HMMEigen):
 
         new.init_state_distn.weights = new.init_state_distn.weights[most_popular]
         new.init_state_distn.weights /= new.init_state_distn.weights.sum()
+        # NOTE: next line is just to be sure
+        if hasattr(new,'left_censoring_init_state_distn'):
+            self.left_censoring_init_state_distn._pi = None
 
         # set new state sequences to viterbi decodings given the new limited
         # parameters
@@ -432,6 +435,10 @@ class LibraryHSMMIntNegBinVariant(LibraryHMM,pyhsmm.models.HSMMIntNegBinVariant)
         assert all(isinstance(o,FrozenMixtureDistribution) for o in obs_distns) \
                 and all(o.components is obs_distns[0].components for o in obs_distns)
         pyhsmm.models.HSMMIntNegBinVariant.__init__(self,obs_distns=obs_distns,*args,**kwargs)
+
+    def _clear_caches(self):
+        LibraryHMM._clear_caches(self)
+        pyhsmm.models.HSMMIntNegBinVariant._clear_caches(self)
 
     def log_likelihood(self,data=None,precomputed_likelihoods=None,**kwargs):
         if data is not None:
