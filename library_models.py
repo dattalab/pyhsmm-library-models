@@ -306,7 +306,7 @@ class LibraryHMM(pyhsmm.models.HMMEigen):
         # transition parameters (requiring more than just the marginal expectations)
         self.trans_distn.max_likelihood([s.stateseq for s in self.states_list])
 
-    def truncate_num_states(self,target_num,destructive=False):
+    def truncate_num_states(self,target_num,destructive=False,mode='random'):
         if not destructive:
             datas = [s.data for s in self.states_list]
             self.remove_data_refs()
@@ -316,25 +316,29 @@ class LibraryHMM(pyhsmm.models.HMMEigen):
         else:
             new = self
 
-        # find most popular states
-        counts = sum(np.bincount(s,minlength=len(self.obs_distns))
-                for s in self.stateseqs_norep)
-        most_popular = np.argsort(counts)[-target_num:]
+        if mode == 'popular':
+            counts = sum(np.bincount(s,minlength=len(self.obs_distns))
+                    for s in self.stateseqs_norep)
+            to_keep = np.argsort(counts)[-target_num:]
+        elif mode == 'random':
+            to_keep = np.random.permutation(len(self.obs_distns))[:target_num]
+        else:
+            raise Exception('bad mode: must be "popular" or "random"')
 
         # limit trans distn, obs distns, dur distns, initial distn
         new.trans_distn.state_dim = target_num
-        new.trans_distn.beta = new.trans_distn.beta[most_popular]
+        new.trans_distn.beta = new.trans_distn.beta[to_keep]
         new.trans_distn.beta /= new.trans_distn.beta.sum()
-        new.trans_distn.A = new.trans_distn.A[np.ix_(most_popular,most_popular)]
+        new.trans_distn.A = new.trans_distn.A[np.ix_(to_keep,to_keep)]
         new.trans_distn.A /= new.trans_distn.A.sum(1)[:,na]
-        new.trans_distn.fullA = new.trans_distn.fullA[np.ix_(most_popular,most_popular)]
+        new.trans_distn.fullA = new.trans_distn.fullA[np.ix_(to_keep,to_keep)]
         new.trans_distn.fullA /= new.trans_distn.fullA.sum(1)[:,na]
 
-        new.obs_distns = [o for i,o in enumerate(new.obs_distns) if i in most_popular]
+        new.obs_distns = [o for i,o in enumerate(new.obs_distns) if i in to_keep]
 
-        new.dur_distns = [o for i,o in enumerate(new.dur_distns) if i in most_popular]
+        new.dur_distns = [o for i,o in enumerate(new.dur_distns) if i in to_keep]
 
-        new.init_state_distn.weights = new.init_state_distn.weights[most_popular]
+        new.init_state_distn.weights = new.init_state_distn.weights[to_keep]
         new.init_state_distn.weights /= new.init_state_distn.weights.sum()
         # NOTE: next line is just to be sure
         if hasattr(new,'left_censoring_init_state_distn'):
