@@ -287,7 +287,7 @@ class LibraryHMM(pyhsmm.models.HMMEigen):
         # max_likelihood_from_likelihoods and pass it s._likelihoods
 
         assert len(self.states_list) > 0, 'Must have data to run Viterbi EM'
-        self.model._clear_caches()
+        self._clear_caches()
 
         ## Viterbi step
         for s in self.states_list:
