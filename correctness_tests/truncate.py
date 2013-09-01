@@ -79,7 +79,7 @@ for i in progprint_xrange(5):
     train_likes.append(model.log_likelihood())
     test_likes.append(model.log_likelihood(test_data,left_censoring=True))
 
-model.truncate_num_states(10,destructive=True)
+model.truncate_num_states(10,destructive=True,mode='random')
 model.Viterbi_EM_fit()
 
 # print 'training data likelihood when in the model: %g' % model.log_likelihood()
