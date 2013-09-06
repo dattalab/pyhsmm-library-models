@@ -309,10 +309,17 @@ class LibraryHMM(pyhsmm.models.HMMEigen):
     def truncate_num_states(self,target_num,destructive=False):
         if not destructive:
             datas = [s.data for s in self.states_list]
+            precomputed_likelihoodss = \
+                    [(s._likelihoods, s._shifted_likelihoods, s._maxes)
+                            for s in self.states_list]
             self.remove_data_refs()
             new = copy.deepcopy(self)
-            for data, s1, s2 in zip(datas,self.states_list,new.states_list):
+            for data, (_l, _sl, _m), s1, s2 \
+                    in zip(datas,precomputed_likelihodss,self.states_list,new.states_list):
                 s1.data = s2.data = data
+                s1._likelihoods = s2._likelihoods = _l
+                s1._shifted_likelihoods = s2._shifted_likelihoods = _sl
+                s1._maxes = s2._maxes = _m
         else:
             new = self
 
@@ -352,6 +359,7 @@ class LibraryHMM(pyhsmm.models.HMMEigen):
     def remove_data_refs(self):
         for s in self.states_list:
             del s.data
+            del s._likelihoods, s._shifted_likelihoods, s._maxes
 
     def reset(self,stateseq=None,list_of_stateseqs=None):
         if stateseq is not None:
