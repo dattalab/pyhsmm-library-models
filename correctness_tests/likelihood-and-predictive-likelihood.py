@@ -65,38 +65,32 @@ model = LibraryHSMMIntNegBinVariant(
 
 for data in training_datas:
     model.add_data(data,left_censoring=True)
+    # model.add_data_parallel(data,left_censoring=True)
 
 ##################
 #  infer things  #
 ##################
 
-train_likes = []
-test_likes = []
-
-for i in progprint_xrange(5):
-# for i in progprint_xrange(50):
+for i in progprint_xrange(25):
     model.resample_model()
-    train_likes.append(model.log_likelihood())
-    test_likes.append(model.log_likelihood(test_data,left_censoring=True))
 
-model.truncate_num_states(10,destructive=True,mode='random')
-model.Viterbi_EM_fit()
 
-# print 'training data likelihood when in the model: %g' % model.log_likelihood()
-# print 'training data likelihood passed in externally: %g' % sum(model.log_likelihood(data,left_censoring=True) for data in training_datas)
+#################
+#  check likes  #
+#################
 
-# plt.figure()
-# truemodel.plot()
-# plt.gcf().suptitle('truth')
+computed_directly = model.log_likelihood(test_data,left_censoring=True)
 
-# plt.figure()
-# model.plot()
-# plt.gcf().suptitle('inferred')
+# NOTE: this is like model.predictive_likelihoods(test_data,[1]) but it includes
+# the first frame p(y_1) term instead of just starting at p(y_2|y_1)
+s = model._states_class(model=model,data=test_data,stateseq=np.zeros(len(test_data)),left_censoring=True)
+alphal = s.messages_forwards()
+cmaxes = alphal.max(axis=1)
+predictions = np.log(np.exp(alphal - cmaxes[:,None]).dot(s.trans_matrix)[:-1]) + cmaxes[:-1,None]
+predictions = np.vstack((np.log(s.pi_0),predictions))
+prediction_likes = np.logaddexp.reduce(predictions + s.aBl,axis=1) - np.concatenate(((0.,),np.logaddexp.reduce(alphal,axis=1)[:-1]))
+computed_predictively = prediction_likes.sum()
 
-# plt.figure()
-# plt.plot(train_likes,label='training')
-# plt.plot(test_likes,label='test')
-# plt.legend()
-
-# plt.show()
+print 'direct computation (backwards messages): %f' % computed_directly
+print 'predictive computation (forwards HMM messages): %f' % computed_predictively
 
