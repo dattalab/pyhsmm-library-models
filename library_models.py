@@ -8,13 +8,14 @@ from collections import defaultdict
 import pyhsmm
 from pyhsmm.util.stats import sample_discrete_from_log_2d_destructive
 from pyhsmm.util.general import engine_global_namespace
+from pyhsmm.basic.models import MixtureDistribution
 
 ### frozen mixture distributions, which will be the obs distributions for the library models
 
 # likelihood_cache_dir = os.path.join(os.path.dirname(__file__), 'cached_likelihoods')
 likelihood_cache_dir = '/tmp/cached_likelihoods'
 
-class FrozenMixtureDistribution(pyhsmm.basic.models.MixtureDistribution):
+class FrozenMixtureDistribution(MixtureDistribution):
     def get_all_likelihoods(self,data):
         # NOTE: doesn't reference self.weights; it's just against
         # self.components. this method is for the model to call inside add_data
@@ -443,18 +444,26 @@ class LibraryHSMMIntNegBinVariant(LibraryHMM,pyhsmm.models.HSMMIntNegBinVariant)
 
     def unfreeze(self,destructive=False):
         if destructive:
-            obs_distns = [MixtureDistribution(weights=o.weights,components=o.components)
+            obs_distns = [MixtureDistribution(weights_obj=o.weights,components=o.components)
                 for o in self.obs_distns]
             dur_distns = self.dur_distns
             trans_distn = self.trans_distn
         else:
             obs_distns = [MixtureDistribution(
-                    weights=o.weights,
+                    weights_obj=copy.deepcopy(o.weights),
                     components=[copy.deepcopy(c) for c in o.components])
                 for o in self.obs_distns]
-            dur_distns = [copy.deepcopy(d) for d in self.dur_distns]
+            dur_distns = copy.deepcopy(self.dur_distns)
+            trans_distn = copy.deepcopy(self.trans_distn)
 
-        raise NotImplementedError
+        new = pyhsmm.models.HSMMIntNegBinVariant(
+                obs_distns=obs_distns,dur_distns=dur_distns,
+                trans_distn=trans_distn)
+        for s in self.states_list:
+            new.add_data(s.data,stateseq=s.stateseq,left_censoring=s.left_censoring)
+
+        return new
+
 
     def log_likelihood(self,data=None,precomputed_likelihoods=None,**kwargs):
         if data is not None:
