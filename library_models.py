@@ -306,15 +306,10 @@ class LibraryHMM(pyhsmm.models.HMMEigen):
         # transition parameters (requiring more than just the marginal expectations)
         self.trans_distn.max_likelihood([s.stateseq for s in self.states_list])
 
-    def truncate_num_states(self,target_num,destructive=False):
-        # TODO this should just call add_data on new instead of dealing with
-        # states
-        # TODO states model pointer wasnt being set right...
+    def truncate_num_states(self,target_num,destructive=False,mode='popular'):
         if not destructive:
-            states_list = self.states_list
-            self.states_list = []
+            # TODO avoid deepcopying data and precomputed_likelihoods
             new = copy.deepcopy(self)
-            self.states_list = states_list
         else:
             new = self
 
@@ -346,12 +341,11 @@ class LibraryHMM(pyhsmm.models.HMMEigen):
         if hasattr(new,'left_censoring_init_state_distn'):
             self.left_censoring_init_state_distn._pi = None
 
-        # set new state sequences to viterbi decodings given the new limited
-        # parameters
+        # set new state sequences to viterbi decodings given the new parameters
         new.state_dim = target_num
-        for s in self.states_list:
-            new.add_data(s.data,left_censoring=s.left_censoring,stateseq=np.zeros_like(s.stateseq))
-            new.states_list[-1].Viterbi()
+        for s in new.states_list:
+            s.clear_caches()
+            s.Viterbi()
 
         return new
 
@@ -461,8 +455,6 @@ class LibraryHSMMIntNegBinVariant(LibraryHMM,pyhsmm.models.HSMMIntNegBinVariant)
             dur_distns = [copy.deepcopy(d) for d in self.dur_distns]
 
         raise NotImplementedError
-
-        # TODO init state distn? 
 
     def log_likelihood(self,data=None,precomputed_likelihoods=None,**kwargs):
         if data is not None:
