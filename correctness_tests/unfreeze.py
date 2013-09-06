@@ -82,3 +82,6 @@ for i in progprint_xrange(5):
 
 newmodel = model.unfreeze()
 
+for i in progprint_xrange(5):
+    newmodel.resample_model()
+
