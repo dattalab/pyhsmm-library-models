@@ -307,19 +307,14 @@ class LibraryHMM(pyhsmm.models.HMMEigen):
         self.trans_distn.max_likelihood([s.stateseq for s in self.states_list])
 
     def truncate_num_states(self,target_num,destructive=False):
+        # TODO this should just call add_data on new instead of dealing with
+        # states
+        # TODO states model pointer wasnt being set right...
         if not destructive:
-            datas = [s.data for s in self.states_list]
-            precomputed_likelihoodss = \
-                    [(s._likelihoods, s._shifted_likelihoods, s._maxes)
-                            for s in self.states_list]
-            self.remove_data_refs()
+            states_list = self.states_list
+            self.states_list = []
             new = copy.deepcopy(self)
-            for data, (_l, _sl, _m), s1, s2 \
-                    in zip(datas,precomputed_likelihodss,self.states_list,new.states_list):
-                s1.data = s2.data = data
-                s1._likelihoods = s2._likelihoods = _l
-                s1._shifted_likelihoods = s2._shifted_likelihoods = _sl
-                s1._maxes = s2._maxes = _m
+            self.states_list = states_list
         else:
             new = self
 
@@ -351,6 +346,7 @@ class LibraryHMM(pyhsmm.models.HMMEigen):
         # parameters
         new.state_dim = target_num
         for s in new.states_list:
+            s.model = new
             s.clear_caches()
             s.Viterbi()
 
@@ -447,6 +443,23 @@ class LibraryHSMMIntNegBinVariant(LibraryHMM,pyhsmm.models.HSMMIntNegBinVariant)
     def _clear_caches(self):
         LibraryHMM._clear_caches(self)
         pyhsmm.models.HSMMIntNegBinVariant._clear_caches(self)
+
+    def unfreeze(self,destructive=False):
+        if destructive:
+            obs_distns = [MixtureDistribution(weights=o.weights,components=o.components)
+                for o in self.obs_distns]
+            dur_distns = self.dur_distns
+            trans_distn = self.trans_distn
+        else:
+            obs_distns = [MixtureDistribution(
+                    weights=o.weights,
+                    components=[copy.deepcopy(c) for c in o.components])
+                for o in self.obs_distns]
+            dur_distns = [copy.deepcopy(d) for d in self.dur_distns]
+
+        raise NotImplementedError
+
+        # TODO init state distn? 
 
     def log_likelihood(self,data=None,precomputed_likelihoods=None,**kwargs):
         if data is not None:
