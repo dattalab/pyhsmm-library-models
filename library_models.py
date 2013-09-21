@@ -120,8 +120,8 @@ class FrozenHMMStates(pyhsmm.internals.states.HMMStatesEigen):
 
         thehash = hashlib.sha1(data)
         for o in model.obs_distns:
-            thehash.update(c.mu)
-            thehash.update(c.sigma)
+            thehash.update(o.mu)
+            thehash.update(o.sigma)
         filename = thehash.hexdigest()
         filepath = os.path.join(likelihood_cache_dir_hmm,filename)
 
