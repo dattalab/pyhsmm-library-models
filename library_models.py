@@ -14,6 +14,7 @@ from pyhsmm.basic.models import MixtureDistribution
 
 # likelihood_cache_dir = os.path.join(os.path.dirname(__file__), 'cached_likelihoods')
 likelihood_cache_dir = '/tmp/cached_likelihoods'
+likelihood_cache_dir_hmm = '/tmp/cached_likelihoods_hmm'
 
 class FrozenMixtureDistribution(MixtureDistribution):
     def get_all_likelihoods(self,data):
@@ -70,7 +71,6 @@ class FrozenMixtureDistribution(MixtureDistribution):
                 if temp is not None:
                     scores /= temp
 
-                scores_in = scores.copy() # TODO TODO HACK HACK REMOVE
                 z = sample_discrete_from_log_2d_destructive(scores)
 
                 if hasattr(self.weights,'resample_just_weights'):
@@ -106,6 +106,52 @@ class FrozenMixtureDistribution(MixtureDistribution):
         new = copy.copy(self)
         new.weights = self.weights.copy_sample()
         return new
+
+
+class FrozenHMMStates(pyhsmm.internals.states.HMMStatesEigen):
+    def __init__(self,model,data,precomputed_likelihoods=None,**kwargs):
+        if precomputed_likelihoods is None:
+            self._frozen_aBl = self.get_all_likelihoods(model,data)
+        super(FrozenHMMStates,self).__init__(model,data=data,**kwargs)
+
+    def get_all_likelihoods(self,model,data):
+        if not os.path.isdir(likelihood_cache_dir_hmm):
+            os.mkdir(likelihood_cache_dir_hmm)
+
+        thehash = hashlib.sha1(data)
+        for o in model.obs_distns:
+            thehash.update(c.mu)
+            thehash.update(c.sigma)
+        filename = thehash.hexdigest()
+        filepath = os.path.join(likelihood_cache_dir_hmm,filename)
+
+        if os.path.isfile(filepath):
+            with open(filepath,'r') as infile:
+                frozen_aBl = cPickle.load(infile)
+            # print 'Loaded from cache: %s' % filename
+        else:
+            frozen_aBl = np.empty((data.shape[0],len(model.obs_distns)))
+            for idx, o in enumerate(model.obs_distns):
+                frozen_aBl[:,idx] = o.log_likelihood(data)
+
+            with open(filepath,'w') as outfile:
+                cPickle.dump(frozen_aBl,outfile,protocol=-1)
+
+            print 'Computed and saved to cache: %s' % filename
+
+        return frozen_aBl
+
+    @property
+    def aBl(self):
+        return self._frozen_aBl
+
+
+class FrozenHMM(pyhsmm.models.HMM):
+    _states_class = FrozenHMMStates
+
+    def resample_obs_distns(self):
+        pass
+
 
 ### internals classes (states and labels)
 
