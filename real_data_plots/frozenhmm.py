@@ -6,8 +6,8 @@ import pyhsmm
 import library_models
 from pyhsmm.util.text import progprint_xrange
 
-num_iter = 500
-training_slice = slice(0,100000)
+num_iter = 100
+training_slice = slice(0,200000)
 
 #############
 #  Loading  #
