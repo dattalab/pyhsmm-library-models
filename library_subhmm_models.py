@@ -3,12 +3,18 @@ import numpy as np
 from numpy import newaxis as na
 import os, cPickle, hashlib
 
+import pyhsmm
 from pyhsmm.models import HSMMIntNegBinVariantSubHMMs
 from pyhsmm.internals.states import HSMMIntNegBinVariantSubHMMsStates
 
-from library_models import FrozenHMM
-
 likelihood_cache_dir_subhmms = '/tmp/cached_likelihoods'
+
+class FrozenSubHMM(pyhsmm.models.HMMEigen):
+    def resample_obs_distns(self,*args,**kwargs):
+        pass
+
+    def resample_states(self,*args,**kwargs):
+        pass
 
 class HSMMIntNegBinVariantFrozenSubHMMsStates(HSMMIntNegBinVariantSubHMMsStates):
     def __init__(self,model,data,precomputed_likelihoods=None,**kwargs):
@@ -49,5 +55,5 @@ class HSMMIntNegBinVariantFrozenSubHMMsStates(HSMMIntNegBinVariantSubHMMsStates)
 
 class HSMMIntNegBinVariantFrozenSubHMMs(HSMMIntNegBinVariantSubHMMs):
     _states_class = HSMMIntNegBinVariantFrozenSubHMMsStates
-    _subhmm_class = FrozenHMM
+    _subhmm_class = FrozenSubHMM
 

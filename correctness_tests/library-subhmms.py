@@ -55,20 +55,21 @@ plt.gcf().suptitle('truth')
 #  set up model  #
 ##################
 
-# TODO change this so that each subhmm gets all the obs_distnss or something
+# TODO only one set of aBl should be computed
 
-Nmaxsuper = Nsuper
-Nmaxsub = Nsub
+Nmaxsuper = 5
 
 dur_distns = \
         [pyhsmm.distributions.NegativeBinomialIntegerRVariantDuration(
             **dur_hypparams) for superstate in range(Nmaxsuper)]
 
+library = [o for obs_distns in true_obs_distnss for o in obs_distns]
+
 model = HSMMIntNegBinVariantFrozenSubHMMs(
         init_state_concentration=6.,
         alpha=6.,gamma=6.,
         sub_alpha=6,sub_gamma=6,
-        obs_distnss=true_obs_distnss,
+        obs_distnss=[library]*Nmaxsuper,
         dur_distns=dur_distns)
 
 model.add_data(data,left_censoring=True)
