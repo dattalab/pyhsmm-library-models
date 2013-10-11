@@ -55,8 +55,6 @@ plt.gcf().suptitle('truth')
 #  set up model  #
 ##################
 
-# TODO only one set of aBl should be computed
-
 Nmaxsuper = 5
 
 dur_distns = \
