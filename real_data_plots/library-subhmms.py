@@ -7,8 +7,8 @@ import library_subhmm_models
 from pyhsmm.util.text import progprint_xrange
 
 
-num_iter = 5
-training_slice = slice(0,25000)
+num_iter = 50
+training_slice = slice(0,100000)
 
 #############
 #  Loading  #
@@ -16,7 +16,7 @@ training_slice = slice(0,25000)
 
 ### data
 
-f = np.load('/scratch/TMT_25p_6-3-13_mm_median_7x3x3_zscore-norm_Truemousenormed_somlibtype_200libsize_Nonequery_9-30-2013.npz')
+f = np.load('/hms/scratch1/abw11/TMT_6-3-13_median_7x3x3_zscore-norm_madeon_200libsize_8-23-2913-fororchestra.npz')
 
 data = f['data']
 mus = f['means']
@@ -64,6 +64,6 @@ for itr in progprint_xrange(num_iter):
 #  Save  #
 ##########
 
-with open('/scratch/frozen_subhmm_results.pickle','w') as outfile:
+with open('/hms/scratch1/abw11/frozen_subhmm_results.pickle','w') as outfile:
     cPickle.dump(model,outfile,protocol=-1)
 
