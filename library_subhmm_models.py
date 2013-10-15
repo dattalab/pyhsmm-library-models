@@ -6,8 +6,10 @@ import os, cPickle, hashlib
 import pyhsmm
 from pyhsmm.models import HSMMIntNegBinVariantSubHMMs
 from pyhsmm.internals.states import HSMMIntNegBinVariantSubHMMsStates
+from pyhsmm.util.general import engine_global_namespace
 
 likelihood_cache_dir_subhmms = '/tmp/cached_likelihoods'
+
 
 class FrozenSubHMM(pyhsmm.models.HMMEigen):
     def resample_obs_distns(self,*args,**kwargs):
@@ -16,14 +18,21 @@ class FrozenSubHMM(pyhsmm.models.HMMEigen):
     def resample_states(self,*args,**kwargs):
         pass
 
+
 class HSMMIntNegBinVariantFrozenSubHMMsStates(HSMMIntNegBinVariantSubHMMsStates):
-    def __init__(self,model,data,precomputed_likelihoods=None,**kwargs):
+    # NOTE: assumes all subHMMs are the same, so that all frozen_aBls are same
+    def __init__(self,model,data,frozen_aBl=None,**kwargs):
         self.model = model
         self.data = data
-        if precomputed_likelihoods is None:
+        if frozen_aBl is None:
             self._frozen_aBls = self.get_all_likelihoods(model,data)
-        super(HSMMIntNegBinVariantFrozenSubHMMsStates,self).__init__(model=model,data=data,**kwargs)
+        else:
+            self.frozen_aBls = [frozen_aBl] * self.hsmm_trans_matrix.shape[0]
+        super(HSMMIntNegBinVariantFrozenSubHMMsStates,self).__init__(
+                model=model,data=data,**kwargs)
 
+    # TODO compute likelihoods lazily? push this into aBls? why'd I break it
+    # out? then I'd need to push data... need lazy loading too
     def get_all_likelihoods(self,model,data):
         if not os.path.isdir(likelihood_cache_dir_subhmms):
             os.mkdir(likelihood_cache_dir_subhmms)
@@ -39,15 +48,16 @@ class HSMMIntNegBinVariantFrozenSubHMMsStates(HSMMIntNegBinVariantSubHMMsStates)
 
         if os.path.isfile(filepath):
             with open(filepath,'r') as infile:
-                frozen_aBls = cPickle.load(infile)
+                frozen_aBl = cPickle.load(infile)
         else:
             self._aBls = None
-            frozen_aBls = super(HSMMIntNegBinVariantFrozenSubHMMsStates,self).aBls
+            frozen_aBl = super(HSMMIntNegBinVariantFrozenSubHMMsStates,self).aBls[0]
             with open(filepath,'w') as outfile:
-                cPickle.dump(frozen_aBls,outfile,protocol=-1)
+                cPickle.dump(frozen_aBl,outfile,protocol=-1)
             print 'Computed and saved to cache: %s' % filename
 
-        return frozen_aBls
+        return [frozen_aBl] * self.hsmm_trans_matrix.shape[0] \
+                if isinstance(frozen_aBl,np.ndarray) else frozen_aBl
 
     @property
     def aBls(self):
@@ -56,4 +66,41 @@ class HSMMIntNegBinVariantFrozenSubHMMsStates(HSMMIntNegBinVariantSubHMMsStates)
 class HSMMIntNegBinVariantFrozenSubHMMs(HSMMIntNegBinVariantSubHMMs):
     _states_class = HSMMIntNegBinVariantFrozenSubHMMsStates
     _subhmm_class = FrozenSubHMM
+
+    def add_data_parallel(self,data,**kwargs):
+        import pyhsmm.parallel as parallel
+        self.add_data(data=data,**kwargs)
+        parallel.add_data(self.states_list[-1]._frozen_aBls[0])
+
+    def resample_states_parallel(self,temp=None):
+        import pyhsmm.parallel as parallel
+        states = self.states_list
+        # clear states lists; we don't need to send them because we're about to
+        # reset them
+        self.states_list = []
+        for hmm in self.HMMs:
+            hmm.states_list = []
+        raw = parallel.map_on_each(
+                self._state_sampler,
+                [s._frozen_aBls[0] for s in states],
+                kwargss=self._get_parallel_kwargss(states),
+                engine_globals=dict(global_model=self,temp=temp),
+                )
+        self.states_list = states
+        for s, (big_stateseq,like) in zip(self.states_list,raw):
+            s.big_stateseq = big_stateseq
+            s._map_states() # sets subhmm states
+            s._loglike = like
+
+    @staticmethod
+    @engine_global_namespace
+    def _state_sampler(frozen_aBl,**kwargs):
+        # expects globals: global_model, temp
+        # NOTE: a little extra work because this runs _map_states locally
+        global_model.add_data(
+                data=frozen_aBl, # dummy
+                frozen_aBl=frozen_aBl,
+                initialize_from_prior=False,temp=temp,**kwargs)
+        like = global_model.states_list[-1].log_likelihood()
+        return global_model.states_list.pop().big_stateseq, like
 

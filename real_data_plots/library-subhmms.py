@@ -8,7 +8,7 @@ from pyhsmm.util.text import progprint_xrange
 
 
 num_iter = 5
-training_slice = slice(0,25000)
+training_slice = slice(0,20000)
 
 #############
 #  Loading  #
@@ -57,7 +57,7 @@ model.add_data(training_data)
 #  Gather model samples  #
 ##########################
 
-for itr in progprint_xrange(num_iter):
+for itr in progprint_xrange(num_iter,perline=1):
     model.resample_model()
 
 ##########
