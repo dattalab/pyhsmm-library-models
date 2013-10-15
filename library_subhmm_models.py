@@ -7,7 +7,8 @@ import pyhsmm
 from pyhsmm.models import HSMMIntNegBinVariantSubHMMs
 from pyhsmm.internals.states import HSMMIntNegBinVariantSubHMMsStates
 
-likelihood_cache_dir_subhmms = '/tmp/cached_likelihoods'
+# likelihood_cache_dir_subhmms = '/tmp/cached_likelihoods'
+likelihood_cache_dir_subhmms = '/hms/scratch1/abw11/tmp/cached_likelihoods'
 
 class FrozenSubHMM(pyhsmm.models.HMMEigen):
     def resample_obs_distns(self,*args,**kwargs):

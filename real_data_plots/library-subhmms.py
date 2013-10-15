@@ -8,7 +8,7 @@ from pyhsmm.util.text import progprint_xrange
 
 
 num_iter = 50
-training_slice = slice(0,100000)
+training_slice = slice(0,20000)
 
 #############
 #  Loading  #
@@ -16,8 +16,9 @@ training_slice = slice(0,100000)
 
 ### data
 
-f = np.load('/hms/scratch1/abw11/TMT_6-3-13_median_7x3x3_zscore-norm_madeon_200libsize_8-23-2913-fororchestra.npz')
+f = np.load('/hms/scratch1/abw11/Data/TMT_6-3-13_median_7x3x3_zscore-norm_madeon_200libsize_8-23-2913-fororchestra.npz')
 
+print "Loading data"
 data = f['data']
 mus = f['means']
 sigmas = f['sigmas']
@@ -27,6 +28,7 @@ training_data = data[training_slice]
 
 library_size, obs_dim = mus.shape
 
+print "Creating libraries"
 library = \
         [pyhsmm.basic.distributions.GaussianFixed(
             mu=mu,sigma=sigma) for mu,sigma in zip(mus,sigmas)]
@@ -35,8 +37,8 @@ library = \
 #  Build model  #
 #################
 
+print "Preparing model"
 Nmaxsuper=20
-
 p_prior, n_prior = 0.5, 100
 alpha_0 = p_prior*n_prior
 beta_0 = (1.0-p_prior)*n_prior
@@ -51,13 +53,15 @@ model = library_subhmm_models.HSMMIntNegBinVariantFrozenSubHMMs(
         obs_distnss=[library]*Nmaxsuper,
         dur_distns=dur_distns)
 
+print "Adding data, computing cached likelihoods"
 model.add_data(training_data)
 
 ##########################
 #  Gather model samples  #
 ##########################
 
-for itr in progprint_xrange(num_iter):
+print "Beginning resampling"
+for itr in progprint_xrange(num_iter,perline=1):
     model.resample_model()
 
 ##########
