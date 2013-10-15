@@ -27,7 +27,7 @@ class HSMMIntNegBinVariantFrozenSubHMMsStates(HSMMIntNegBinVariantSubHMMsStates)
         if frozen_aBl is None:
             self._frozen_aBls = self.get_all_likelihoods(model,data)
         else:
-            self.frozen_aBls = [frozen_aBl] * self.hsmm_trans_matrix.shape[0]
+            self._frozen_aBls = [frozen_aBl] * self.hsmm_trans_matrix.shape[0]
         super(HSMMIntNegBinVariantFrozenSubHMMsStates,self).__init__(
                 model=model,data=data,**kwargs)
 
