@@ -7,7 +7,7 @@ import library_subhmm_models
 from pyhsmm.util.text import progprint_xrange
 
 
-num_iter = 50
+num_iter = 5
 training_slice = slice(0,20000)
 
 #############
@@ -16,9 +16,8 @@ training_slice = slice(0,20000)
 
 ### data
 
-f = np.load('/hms/scratch1/abw11/Data/TMT_6-3-13_median_7x3x3_zscore-norm_madeon_200libsize_8-23-2913-fororchestra.npz')
+f = np.load('/scratch/TMT_25p_6-3-13_mm_median_7x3x3_zscore-norm_Truemousenormed_somlibtype_200libsize_Nonequery_9-30-2013.npz')
 
-print "Loading data"
 data = f['data']
 mus = f['means']
 sigmas = f['sigmas']
@@ -28,7 +27,6 @@ training_data = data[training_slice]
 
 library_size, obs_dim = mus.shape
 
-print "Creating libraries"
 library = \
         [pyhsmm.basic.distributions.GaussianFixed(
             mu=mu,sigma=sigma) for mu,sigma in zip(mus,sigmas)]
@@ -37,8 +35,8 @@ library = \
 #  Build model  #
 #################
 
-print "Preparing model"
 Nmaxsuper=20
+
 p_prior, n_prior = 0.5, 100
 alpha_0 = p_prior*n_prior
 beta_0 = (1.0-p_prior)*n_prior
@@ -53,14 +51,12 @@ model = library_subhmm_models.HSMMIntNegBinVariantFrozenSubHMMs(
         obs_distnss=[library]*Nmaxsuper,
         dur_distns=dur_distns)
 
-print "Adding data, computing cached likelihoods"
 model.add_data(training_data)
 
 ##########################
 #  Gather model samples  #
 ##########################
 
-print "Beginning resampling"
 for itr in progprint_xrange(num_iter,perline=1):
     model.resample_model()
 
@@ -68,6 +64,6 @@ for itr in progprint_xrange(num_iter,perline=1):
 #  Save  #
 ##########
 
-with open('/hms/scratch1/abw11/frozen_subhmm_results.pickle','w') as outfile:
+with open('/scratch/frozen_subhmm_results.pickle','w') as outfile:
     cPickle.dump(model,outfile,protocol=-1)
 
