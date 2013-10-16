@@ -8,8 +8,8 @@ from pyhsmm.models import HSMMIntNegBinVariantSubHMMs
 from pyhsmm.internals.states import HSMMIntNegBinVariantSubHMMsStates
 from pyhsmm.util.general import engine_global_namespace
 
-# likelihood_cache_dir_subhmms = '/tmp/cached_likelihoods'
-likelihood_cache_dir_subhmms = '/hms/scratch1/abw11/tmp/cached_likelihoods'
+likelihood_cache_dir_subhmms = '/tmp/cached_likelihoods'
+# likelihood_cache_dir_subhmms = '/hms/scratch1/abw11/tmp/cached_likelihoods'
 
 
 class FrozenSubHMM(pyhsmm.models.HMMEigen):
