@@ -7,13 +7,8 @@ import pyhsmm.parallel # To kick off the worker imports
 import pyhsmm_library_models.library_subhmm_models as library_subhmm_models
 from pyhsmm.util.text import progprint_xrange
 
-#########################
-#  Prepare the Clients  #
-#########################
-# from IPython.parallel import Client
-# dviews = Client(profile='default')[:]
-# dviews.execute("import pyhsmm_library_models.library_subhmm_models as library_subhmm_models").get() # We slap on a get() to make sure it doesn't error
-
+import socket
+hostname = socket.gethostname()
 
 num_iter = 50
 training_slice = slice(0,20000)
@@ -24,7 +19,10 @@ training_slice = slice(0,20000)
 
 ### data
 
-f = np.load('/hms/scratch1/abw11/Data/TMT_6-3-13_median_7x3x3_zscore-norm_madeon_200libsize_8-23-2913-fororchestra.npz')
+if hostname == 'jefferson':
+    f = np.load("/scratch/TMT_6-3-13_median_7x3x3_zscore-norm_madeon_200libsize_8-23-2913-fororchestra.npz")
+else:
+    f = np.load('/hms/scratch1/abw11/Data/TMT_6-3-13_median_7x3x3_zscore-norm_madeon_200libsize_8-23-2913-fororchestra.npz')
 
 data = f['data']
 mus = f['means']
@@ -32,9 +30,7 @@ sigmas = f['sigmas']
 training_data = data[training_slice]
 
 ### library
-
 library_size, obs_dim = mus.shape
-
 library = \
         [pyhsmm.basic.distributions.GaussianFixed(
             mu=mu,sigma=sigma) for mu,sigma in zip(mus,sigmas)]
@@ -74,6 +70,13 @@ for itr in progprint_xrange(num_iter,perline=1):
 #  Save  #
 ##########
 
-with open('/hms/scratch1/abw11/parallel_frozen_subhmm_results.pickle','w') as outfile:
-    cPickle.dump(model,outfile,protocol=-1)
+
+if hostname == 'jefferson':
+    outfile = '/scratch/parallel_frozen_subhmm_results.pickle'
+else:
+    outfile = '/hms/scratch1/abw11/parallel_frozen_subhmm_results.pickle'
+
+
+with open(outfile,'w') as f:
+    cPickle.dump(model,f,protocol=-1)
 
