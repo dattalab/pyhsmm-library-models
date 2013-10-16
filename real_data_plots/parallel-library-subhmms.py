@@ -7,6 +7,8 @@ import pyhsmm.parallel # To kick off the worker imports
 import pyhsmm_library_models.library_subhmm_models as library_subhmm_models
 from pyhsmm.util.text import progprint_xrange
 
+from IPython.parallel import Client
+
 #########################
 #  Prepare the Clients  #
 #########################
@@ -16,7 +18,7 @@ from pyhsmm.util.text import progprint_xrange
 
 
 num_iter = 50
-training_slice = slice(0,20000)
+training_slice = np.r_[0:20000]
 
 #############
 #  Loading  #
@@ -59,8 +61,12 @@ model = library_subhmm_models.HSMMIntNegBinVariantFrozenSubHMMs(
         obs_distnss=[library]*Nmaxsuper,
         dur_distns=dur_distns)
 
-print "Adding parallel training data"
-model.add_data_parallel(training_data)
+n_clients = len(Client()[:])
+print "Distributing data to %d clients...\n" % n_clients
+all_data = np.array_split(training_data, n_clients)
+for this_data in all_data:
+    model.add_data_parallel(this_data)
+
 
 ##########################
 #  Gather model samples  #
