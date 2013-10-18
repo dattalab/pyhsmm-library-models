@@ -18,7 +18,7 @@ from IPython.parallel import Client
 
 
 num_iter = 50
-training_slice = np.r_[0:20000]
+training_slice = slice(0,24000)
 
 #############
 #  Loading  #
@@ -26,7 +26,8 @@ training_slice = np.r_[0:20000]
 
 ### data
 
-f = np.load('/hms/scratch1/abw11/Data/TMT_6-3-13_median_7x3x3_zscore-norm_madeon_200libsize_8-23-2913-fororchestra.npz')
+f = np.load('/scratch/TMT_6-3-13_median_7x3x3_zscore-norm_madeon_200libsize_8-23-2913-fororchestra.npz')
+# f = np.load('/hms/scratch1/abw11/Data/TMT_6-3-13_median_7x3x3_zscore-norm_madeon_200libsize_8-23-2913-fororchestra.npz')
 
 data = f['data']
 mus = f['means']
@@ -63,10 +64,11 @@ model = library_subhmm_models.HSMMIntNegBinVariantFrozenSubHMMs(
 
 n_clients = len(Client()[:])
 print "Distributing data to %d clients...\n" % n_clients
+# n_clients = 6
 all_data = np.array_split(training_data, n_clients)
 for this_data in all_data:
-    model.add_data_parallel(this_data)
-
+    model.add_data_parallel(this_data,left_censoring=True)
+    # model.add_data(this_data,left_censoring=True)
 
 ##########################
 #  Gather model samples  #
@@ -75,6 +77,7 @@ for this_data in all_data:
 print "Beginning our resampling"
 for itr in progprint_xrange(num_iter,perline=1):
     model.resample_model_parallel()
+    # model.resample_model()
 
 ##########
 #  Save  #

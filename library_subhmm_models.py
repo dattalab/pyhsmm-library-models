@@ -73,6 +73,11 @@ class HSMMIntNegBinVariantFrozenSubHMMs(HSMMIntNegBinVariantSubHMMs):
         self.add_data(data=data,**kwargs)
         parallel.add_data(self.states_list[-1]._frozen_aBls[0])
 
+    # TODO is this necessary, or is it inherited?
+    def _get_parallel_kwargss(self,states_objs):
+        return [dict(trunc=s.trunc,left_censoring=s.left_censoring,
+                    right_censoring=s.right_censoring) for s in states_objs]
+
     def resample_states_parallel(self,temp=None):
         import pyhsmm.parallel as parallel
         states = self.states_list
@@ -98,10 +103,12 @@ class HSMMIntNegBinVariantFrozenSubHMMs(HSMMIntNegBinVariantSubHMMs):
     def _state_sampler(frozen_aBl,**kwargs):
         # expects globals: global_model, temp
         # NOTE: a little extra work because this runs _map_states locally
+        # TODO allocate alphan out here (global)
         global_model.add_data(
                 data=frozen_aBl, # dummy
                 frozen_aBl=frozen_aBl,
                 initialize_from_prior=False,temp=temp,**kwargs)
         like = global_model.states_list[-1].log_likelihood()
-        return global_model.states_list.pop().big_stateseq, like
+        big_stateseq = global_model.states_list.pop().big_stateseq
+        return big_stateseq, like
 
