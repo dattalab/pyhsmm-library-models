@@ -12,9 +12,15 @@ from pyhsmm.basic.models import MixtureDistribution
 
 ### frozen mixture distributions, which will be the obs distributions for the library models
 
-# likelihood_cache_dir = os.path.join(os.path.dirname(__file__), 'cached_likelihoods')
-likelihood_cache_dir = '/tmp/cached_likelihoods'
-likelihood_cache_dir_hmm = '/tmp/cached_likelihoods_hmm'
+import socket
+hostname = socket.gethostname()
+if hostname == 'jefferson':
+    likelihood_cache_dir_subhmms = '/tmp/cached_likelihoods'
+    likelihood_cache_dir_hmm = '/tmp/cached_likelihoods_hmm'
+else:
+    likelihood_cache_dir_subhmms = '/hms/scratch1/abw11/tmp/cached_likelihoods'
+    likelihood_cache_dir_hmm = '/hms/scratch1/abw11/tmp/cached_likelihoods_hmm'
+
 
 class FrozenMixtureDistribution(MixtureDistribution):
     def get_all_likelihoods(self,data):

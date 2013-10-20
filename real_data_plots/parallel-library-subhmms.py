@@ -11,7 +11,7 @@ import socket
 hostname = socket.gethostname()
 
 num_iter = 50
-training_slice = slice(0,20000)
+training_slice = slice(0,24000)
 
 #############
 #  Loading  #
@@ -55,8 +55,13 @@ model = library_subhmm_models.HSMMIntNegBinVariantFrozenSubHMMs(
         obs_distnss=[library]*Nmaxsuper,
         dur_distns=dur_distns)
 
-print "Adding parallel training data"
-model.add_data_parallel(training_data)
+n_clients = len(Client()[:])
+print "Distributing data to %d clients...\n" % n_clients
+# n_clients = 6
+all_data = np.array_split(training_data, n_clients)
+for this_data in all_data:
+    model.add_data_parallel(this_data,left_censoring=True)
+    # model.add_data(this_data,left_censoring=True)
 
 ##########################
 #  Gather model samples  #
@@ -65,6 +70,7 @@ model.add_data_parallel(training_data)
 print "Beginning our resampling"
 for itr in progprint_xrange(num_iter,perline=1):
     model.resample_model_parallel()
+    # model.resample_model()
 
 ##########
 #  Save  #
