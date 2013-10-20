@@ -8,12 +8,17 @@ from pyhsmm.models import HSMMIntNegBinVariantSubHMMs
 from pyhsmm.internals.states import HSMMIntNegBinVariantSubHMMsStates
 from pyhsmm.util.general import engine_global_namespace
 
+
+
 import socket
 hostname = socket.gethostname()
-if hostname == 'jefferson':
-    likelihood_cache_dir_subhmms = '/tmp/cached_likelihoods'
-else:
+if os.path.exists("/hms/scratch1/"):
     likelihood_cache_dir_subhmms = '/hms/scratch1/abw11/tmp/cached_likelihoods'
+    likelihood_cache_dir_hmm = '/hms/scratch1/abw11/tmp/cached_likelihoods_hmm'
+else:
+    tempdir = tempfile.gettempdir()
+    likelihood_cache_dir_subhmms = os.path.join(tempdir, 'cached_likelihoods')
+    likelihood_cache_dir_hmm = os.path.join(tempdir, 'cached_likelihoods_hmm')
 
 class FrozenSubHMM(pyhsmm.models.HMMEigen):
     def resample_obs_distns(self,*args,**kwargs):
