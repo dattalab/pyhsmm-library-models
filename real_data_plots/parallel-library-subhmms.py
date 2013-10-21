@@ -21,10 +21,10 @@ training_slice = slice(0,6000)
 
 ### data
 
-if hostname == 'jefferson':
-    f = np.load("/scratch/TMT_6-3-13_median_7x3x3_zscore-norm_madeon_200libsize_8-23-2913-fororchestra.npz")
-else:
+if os.path.isdir('/hms'):
     f = np.load('/hms/scratch1/abw11/Data/TMT_6-3-13_median_7x3x3_zscore-norm_madeon_200libsize_8-23-2913-fororchestra.npz')
+else:
+    f = np.load("/scratch/TMT_6-3-13_median_7x3x3_zscore-norm_madeon_200libsize_8-23-2913-fororchestra.npz")
 
 data = f['data']
 mus = f['means']
@@ -78,10 +78,10 @@ for itr in progprint_xrange(num_iter,perline=1):
 ##########
 
 
-if hostname == 'jefferson':
-    outfile = '/scratch/parallel_frozen_subhmm_results.pickle'
-else:
+if os.path.isdir('/hms'):
     outfile = '/hms/scratch1/abw11/parallel_frozen_subhmm_results.pickle'
+else:
+    outfile = '/scratch/parallel_frozen_subhmm_results.pickle'
 
 
 with open(outfile,'w') as f:
