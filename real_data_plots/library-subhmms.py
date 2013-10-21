@@ -8,9 +8,7 @@ from pyhsmm.util.text import progprint_xrange
 
 
 num_iter = 5
-training_slice = slice(0,25000)
-
-print "DONT USE THIS FILE YET"
+training_slice = slice(0,20000)
 
 #############
 #  Loading  #
@@ -37,8 +35,7 @@ library = \
 #  Build model  #
 #################
 
-Nmaxsuper=30
-Nmaxsub=20
+Nmaxsuper=20
 
 p_prior, n_prior = 0.5, 100
 alpha_0 = p_prior*n_prior
@@ -47,17 +44,11 @@ dur_distns = [pyhsmm.basic.distributions.NegativeBinomialIntegerRVariantDuration
     np.r_[0,0,1,1,1,1,1,1,1,1,1,1,1],
     alpha_0=alpha_0,beta_0=beta_0) for state in range(Nmaxsuper)]
 
-# TODO obs_hypparams
-# TODO nonconj, meanprior is mean and cov of data, sigmaprior can be in terms of
-# library!
-obs_distnss = [[pyhsmm.distributions.Gaussian(**obs_hypparams)
-        for substate in range(Nmaxsub)] for superstate in range(Nmaxsuper)]
-
-model = library_subhmm_models.HSMMIntNegBinVariantSubHMMs(
+model = library_subhmm_models.HSMMIntNegBinVariantFrozenSubHMMs(
         alpha_a_0=1.0,alpha_b_0=0.1,
         gamma_a_0=1,gamma_b_0=1,
         sub_alpha_a_0=1.,sub_alpha_b_0=1.,sub_gamma_a_0=1.,sub_gamma_b_0=1.,
-        obs_distnss=obs_distnss,
+        obs_distnss=[library]*Nmaxsuper,
         dur_distns=dur_distns)
 
 model.add_data(training_data)
@@ -66,7 +57,7 @@ model.add_data(training_data)
 #  Gather model samples  #
 ##########################
 
-for itr in progprint_xrange(num_iter):
+for itr in progprint_xrange(num_iter,perline=1):
     model.resample_model()
 
 ##########
