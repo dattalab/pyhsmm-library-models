@@ -1,7 +1,7 @@
 from __future__ import division
 import numpy as np
 from numpy import newaxis as na
-import os, cPickle, hashlib
+import os, cPickle, hashlib, tempfile
 
 import pyhsmm
 from pyhsmm.models import HSMMIntNegBinVariantSubHMMs
