@@ -1,6 +1,6 @@
 from __future__ import division
 import numpy as np
-import cPickle
+import cPickle, os
 
 from IPython.parallel import Client
 
