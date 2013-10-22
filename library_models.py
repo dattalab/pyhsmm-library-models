@@ -8,13 +8,15 @@ from collections import defaultdict
 import pyhsmm
 from pyhsmm.util.stats import sample_discrete_from_log_2d_destructive
 from pyhsmm.util.general import engine_global_namespace
+from pyhsmm.basic.models import MixtureDistribution
 
 ### frozen mixture distributions, which will be the obs distributions for the library models
 
 # likelihood_cache_dir = os.path.join(os.path.dirname(__file__), 'cached_likelihoods')
 likelihood_cache_dir = '/tmp/cached_likelihoods'
+likelihood_cache_dir_hmm = '/tmp/cached_likelihoods_hmm'
 
-class FrozenMixtureDistribution(pyhsmm.basic.models.MixtureDistribution):
+class FrozenMixtureDistribution(MixtureDistribution):
     def get_all_likelihoods(self,data):
         # NOTE: doesn't reference self.weights; it's just against
         # self.components. this method is for the model to call inside add_data
@@ -69,7 +71,6 @@ class FrozenMixtureDistribution(pyhsmm.basic.models.MixtureDistribution):
                 if temp is not None:
                     scores /= temp
 
-                scores_in = scores.copy() # TODO TODO HACK HACK REMOVE
                 z = sample_discrete_from_log_2d_destructive(scores)
 
                 if hasattr(self.weights,'resample_just_weights'):
@@ -105,6 +106,52 @@ class FrozenMixtureDistribution(pyhsmm.basic.models.MixtureDistribution):
         new = copy.copy(self)
         new.weights = self.weights.copy_sample()
         return new
+
+
+class FrozenHMMStates(pyhsmm.internals.states.HMMStatesEigen):
+    def __init__(self,model,data,precomputed_likelihoods=None,**kwargs):
+        if precomputed_likelihoods is None:
+            self._frozen_aBl = self.get_all_likelihoods(model,data)
+        super(FrozenHMMStates,self).__init__(model,data=data,**kwargs)
+
+    def get_all_likelihoods(self,model,data):
+        if not os.path.isdir(likelihood_cache_dir_hmm):
+            os.mkdir(likelihood_cache_dir_hmm)
+
+        thehash = hashlib.sha1(data)
+        for o in model.obs_distns:
+            thehash.update(c.mu)
+            thehash.update(c.sigma)
+        filename = thehash.hexdigest()
+        filepath = os.path.join(likelihood_cache_dir_hmm,filename)
+
+        if os.path.isfile(filepath):
+            with open(filepath,'r') as infile:
+                frozen_aBl = cPickle.load(infile)
+            # print 'Loaded from cache: %s' % filename
+        else:
+            frozen_aBl = np.empty((data.shape[0],len(model.obs_distns)))
+            for idx, o in enumerate(model.obs_distns):
+                frozen_aBl[:,idx] = o.log_likelihood(data)
+
+            with open(filepath,'w') as outfile:
+                cPickle.dump(frozen_aBl,outfile,protocol=-1)
+
+            print 'Computed and saved to cache: %s' % filename
+
+        return frozen_aBl
+
+    @property
+    def aBl(self):
+        return self._frozen_aBl
+
+
+class FrozenHMM(pyhsmm.models.HMM):
+    _states_class = FrozenHMMStates
+
+    def resample_obs_distns(self):
+        pass
+
 
 ### internals classes (states and labels)
 
@@ -306,13 +353,10 @@ class LibraryHMM(pyhsmm.models.HMMEigen):
         # transition parameters (requiring more than just the marginal expectations)
         self.trans_distn.max_likelihood([s.stateseq for s in self.states_list])
 
-    def truncate_num_states(self,target_num,destructive=False,mode='random'):
+    def truncate_num_states(self,target_num,destructive=False,mode='popular'):
         if not destructive:
-            datas = [s.data for s in self.states_list]
-            self.remove_data_refs()
+            # TODO avoid deepcopying data and precomputed_likelihoods
             new = copy.deepcopy(self)
-            for data, s1, s2 in zip(datas,self.states_list,new.states_list):
-                s1.data = s2.data = data
         else:
             new = self
 
@@ -344,8 +388,7 @@ class LibraryHMM(pyhsmm.models.HMMEigen):
         if hasattr(new,'left_censoring_init_state_distn'):
             self.left_censoring_init_state_distn._pi = None
 
-        # set new state sequences to viterbi decodings given the new limited
-        # parameters
+        # set new state sequences to viterbi decodings given the new parameters
         new.state_dim = target_num
         for s in new.states_list:
             s.clear_caches()
@@ -356,6 +399,7 @@ class LibraryHMM(pyhsmm.models.HMMEigen):
     def remove_data_refs(self):
         for s in self.states_list:
             del s.data
+            del s._likelihoods, s._shifted_likelihoods, s._maxes
 
     def reset(self,stateseq=None,list_of_stateseqs=None):
         if stateseq is not None:
@@ -443,6 +487,29 @@ class LibraryHSMMIntNegBinVariant(LibraryHMM,pyhsmm.models.HSMMIntNegBinVariant)
     def _clear_caches(self):
         LibraryHMM._clear_caches(self)
         pyhsmm.models.HSMMIntNegBinVariant._clear_caches(self)
+
+    def unfreeze(self,destructive=False):
+        if destructive:
+            obs_distns = [MixtureDistribution(weights_obj=o.weights,components=o.components)
+                for o in self.obs_distns]
+            dur_distns = self.dur_distns
+            trans_distn = self.trans_distn
+        else:
+            obs_distns = [MixtureDistribution(
+                    weights_obj=copy.deepcopy(o.weights),
+                    components=[copy.deepcopy(c) for c in o.components])
+                for o in self.obs_distns]
+            dur_distns = copy.deepcopy(self.dur_distns)
+            trans_distn = copy.deepcopy(self.trans_distn)
+
+        new = pyhsmm.models.HSMMIntNegBinVariant(
+                obs_distns=obs_distns,dur_distns=dur_distns,
+                trans_distn=trans_distn)
+        for s in self.states_list:
+            new.add_data(s.data,stateseq=s.stateseq,left_censoring=s.left_censoring)
+
+        return new
+
 
     def log_likelihood(self,data=None,precomputed_likelihoods=None,**kwargs):
         if data is not None:

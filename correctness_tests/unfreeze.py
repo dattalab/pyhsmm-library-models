@@ -65,6 +65,7 @@ model = LibraryHSMMIntNegBinVariant(
 
 for data in training_datas:
     model.add_data(data,left_censoring=True)
+    # model.add_data_parallel(data,left_censoring=True)
 
 ##################
 #  infer things  #
@@ -74,29 +75,13 @@ train_likes = []
 test_likes = []
 
 for i in progprint_xrange(5):
-# for i in progprint_xrange(50):
     model.resample_model()
+    # model.resample_model_parallel()
     train_likes.append(model.log_likelihood())
-    test_likes.append(model.log_likelihood(test_data,left_censoring=True))
+    # test_likes.append(model.log_likelihood(test_data,left_censoring=True))
 
-model.truncate_num_states(10,destructive=True,mode='random')
-model.Viterbi_EM_fit()
+newmodel = model.unfreeze()
 
-# print 'training data likelihood when in the model: %g' % model.log_likelihood()
-# print 'training data likelihood passed in externally: %g' % sum(model.log_likelihood(data,left_censoring=True) for data in training_datas)
-
-# plt.figure()
-# truemodel.plot()
-# plt.gcf().suptitle('truth')
-
-# plt.figure()
-# model.plot()
-# plt.gcf().suptitle('inferred')
-
-# plt.figure()
-# plt.plot(train_likes,label='training')
-# plt.plot(test_likes,label='test')
-# plt.legend()
-
-# plt.show()
+for i in progprint_xrange(5):
+    newmodel.resample_model()
 
