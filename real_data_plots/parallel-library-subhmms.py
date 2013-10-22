@@ -1,19 +1,19 @@
 from __future__ import division
 import numpy as np
-import cPickle
+import cPickle, os
 
 from IPython.parallel import Client
 
 import pyhsmm
 import pyhsmm.parallel # To kick off the worker imports
-import pyhsmm_library_models.library_subhmm_models as library_subhmm_models
+import library_subhmm_models
 from pyhsmm.util.text import progprint_xrange
 
 import socket
 hostname = socket.gethostname()
 
 num_iter = 20
-training_slice = slice(0,6000)
+training_slice = slice(0,50000)
 
 #############
 #  Loading  #
@@ -57,7 +57,8 @@ model = library_subhmm_models.HSMMIntNegBinVariantFrozenSubHMMs(
         obs_distnss=[library]*Nmaxsuper,
         dur_distns=dur_distns)
 
-n_clients = len(Client()[:])
+from IPython.parallel import Client
+n_clients = len(Client(profile='lsf')[:])
 print "Distributing data to %d clients...\n" % n_clients
 all_data = np.array_split(training_data, n_clients)
 for this_data in all_data:
