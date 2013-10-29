@@ -1,7 +1,7 @@
 from __future__ import division
 import numpy as np
 na = np.newaxis
-import copy, os, hashlib, cPickle
+import copy, os, hashlib, cPickle, tempfile
 from warnings import warn
 from collections import defaultdict
 
@@ -12,9 +12,16 @@ from pyhsmm.basic.models import MixtureDistribution
 
 ### frozen mixture distributions, which will be the obs distributions for the library models
 
-# likelihood_cache_dir = os.path.join(os.path.dirname(__file__), 'cached_likelihoods')
-likelihood_cache_dir = '/tmp/cached_likelihoods'
-likelihood_cache_dir_hmm = '/tmp/cached_likelihoods_hmm'
+import socket
+hostname = socket.gethostname()
+if os.path.exists("/hms/scratch1/"):
+    likelihood_cache_dir = '/hms/scratch1/abw11/tmp/cached_likelihoods'
+    likelihood_cache_dir_hmm = '/hms/scratch1/abw11/tmp/cached_likelihoods_hmm'
+else:
+    tempdir = tempfile.gettempdir()
+    likelihood_cache_dir = os.path.join(tempdir, '/cached_likelihoods')
+    likelihood_cache_dir_hmm = os.path.join(tempdir, 'cached_likelihoods_hmm')
+
 
 class FrozenMixtureDistribution(MixtureDistribution):
     def get_all_likelihoods(self,data):
@@ -120,8 +127,8 @@ class FrozenHMMStates(pyhsmm.internals.states.HMMStatesEigen):
 
         thehash = hashlib.sha1(data)
         for o in model.obs_distns:
-            thehash.update(c.mu)
-            thehash.update(c.sigma)
+            thehash.update(o.mu)
+            thehash.update(o.sigma)
         filename = thehash.hexdigest()
         filepath = os.path.join(likelihood_cache_dir_hmm,filename)
 
@@ -146,7 +153,7 @@ class FrozenHMMStates(pyhsmm.internals.states.HMMStatesEigen):
         return self._frozen_aBl
 
 
-class FrozenHMM(pyhsmm.models.HMM):
+class FrozenHMM(pyhsmm.models.HMMEigen):
     _states_class = FrozenHMMStates
 
     def resample_obs_distns(self):
