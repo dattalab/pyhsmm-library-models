@@ -89,7 +89,9 @@ print "Beginning our resampling"
 likelihoods = []
 for itr in progprint_xrange(num_iter,perline=1):
     model.resample_model_parallel()
-    likelihoods.append(model.log_likelihood())
+    loglike = model.log_likelihood()
+    print loglike
+    likelihoods.append(loglike)
 
 ##########
 #  Save  #
