@@ -76,8 +76,14 @@ model.add_data(data,left_censoring=True)
 #  inference  #
 ###############
 
+loglikes = []
 for itr in progprint_xrange(50):
     model.resample_model()
+    loglikes.append(model.log_likelihood())
+
+plt.figure()
+plt.plot(loglikes)
+plt.gcf().suptitle('training log likelihoods')
 
 plt.figure()
 model.plot()
