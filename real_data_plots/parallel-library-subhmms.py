@@ -1,5 +1,6 @@
 from __future__ import division
 import numpy as np
+# np.seterr(all='ignore')
 import cPickle, os
 
 from IPython.parallel import Client
@@ -12,9 +13,9 @@ from pyhsmm.util.text import progprint_xrange
 import socket
 hostname = socket.gethostname()
 
-num_iter = 20
-training_slice = slice(0,50000)
-
+num_iter = 100
+training_slice = slice(0,290000) # out of a possible 290000
+THIS_PROFILE = "lsf"
 #############
 #  Loading  #
 #############
@@ -58,21 +59,39 @@ model = library_subhmm_models.HSMMIntNegBinVariantFrozenSubHMMs(
         dur_distns=dur_distns)
 
 from IPython.parallel import Client
-n_clients = len(Client(profile='lsf')[:])
+dviews = Client(profile=THIS_PROFILE)[:]
+n_clients = len(dviews)
+# Set the clients up with the right paths within them
+home_dir = os.path.expanduser("~")
+dviews.execute("""
+import sys
+sys.path.append("{home_dir}/Code")
+sys.path.append("{home_dir}/Code/luigi/")
+sys.path.append("{home_dir}/Code/")
+sys.path.append("{home_dir}/Code/pyhsmm_library_models/")
+import pyhsmm_library_models.library_subhmm_models as library_subhmm_models
+""".format(home_dir=home_dir))
+dviews.push(dict(my_data={}))
+pyhsmm.parallel.data_residency = {}
+pyhsmm.parallel.costs = np.zeros(len(dviews))
+# np.seterr(all='ignore') # put this in the execute thingy
+
 print "Distributing data to %d clients...\n" % n_clients
 all_data = np.array_split(training_data, n_clients)
 for this_data in all_data:
     model.add_data_parallel(this_data,left_censoring=True)
-    # model.add_data(this_data,left_censoring=True)
 
 ##########################
 #  Gather model samples  #
 ##########################
 
 print "Beginning our resampling"
+likelihoods = []
 for itr in progprint_xrange(num_iter,perline=1):
     model.resample_model_parallel()
-    # model.resample_model()
+    loglike = model.log_likelihood()
+    print loglike
+    likelihoods.append(loglike)
 
 ##########
 #  Save  #
@@ -86,5 +105,5 @@ else:
 
 
 with open(outfile,'w') as f:
-    cPickle.dump(model,f,protocol=-1)
+    cPickle.dump({"model":model,"likelihoods":likelihoods},f,protocol=-1)
 

@@ -8,8 +8,6 @@ from pyhsmm.models import HSMMIntNegBinVariantSubHMMs
 from pyhsmm.internals.states import HSMMIntNegBinVariantSubHMMsStates
 from pyhsmm.util.general import engine_global_namespace
 
-
-
 import socket
 hostname = socket.gethostname()
 if os.path.exists("/hms/scratch1/"):
