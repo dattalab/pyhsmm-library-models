@@ -51,7 +51,7 @@ truemodel = pyhsmm.models.HSMMIntNegBinVariantSubHMMs(
         obs_distnss=true_obs_distnss,
         dur_distns=true_dur_distns)
 
-datas = [truemodel.generate(T//2)[0] for i in range(6)]
+datas = [truemodel.generate(T//6)[0] for i in range(6)]
 
 plt.figure()
 truemodel.plot()
