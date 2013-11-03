@@ -14,9 +14,9 @@ PARALLEL = True
 #  synthetic data generation  #
 ###############################
 
-Nsuper = 5
-Nsub = 10
-T = 12000
+Nsuper = 3
+Nsub = 4
+T = 4000
 obs_dim = 2
 
 try:
@@ -51,7 +51,7 @@ truemodel = pyhsmm.models.HSMMIntNegBinVariantSubHMMs(
         obs_distnss=true_obs_distnss,
         dur_distns=true_dur_distns)
 
-datas = [truemodel.generate(T//6)[0] for i in range(6)]
+datas = [truemodel.generate(T//2)[0] for i in range(6)]
 
 plt.figure()
 truemodel.plot()
@@ -100,6 +100,12 @@ else:
 plt.figure()
 model.plot()
 plt.gcf().suptitle('fit')
+
+superstateseq = np.concatenate(model.stateseqs)
+substateseqs = [np.concatenate([s.stateseq for s in hmm.states_list]) for hmm in model.HMMs if len(hmm.states_list) > 0]
+
+print len(superstateseq)
+print len(np.concatenate(substateseqs))
 
 plt.show()
 

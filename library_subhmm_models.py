@@ -84,25 +84,28 @@ class HSMMIntNegBinVariantFrozenSubHMMs(HSMMIntNegBinVariantSubHMMs):
         return [dict(trunc=s.trunc,left_censoring=s.left_censoring,
                     right_censoring=s.right_censoring) for s in states_objs]
 
-    def resample_states_parallel(self,temp=None):
+    def resample_states_parallel(self,states_to_resample,states_to_hold_out,temp=None):
         import pyhsmm.parallel as parallel
-        states = self.states_list
-        # clear states lists; we don't need to send them because we're about to
-        # reset them
+        # remove things we don't need in parallel
         self.states_list = []
         for hmm in self.HMMs:
-            hmm.states_list = []
+            hmm.states_list = [] # includes held out subseqs, added back below
+
         raw = parallel.map_on_each(
                 self._state_sampler,
-                [s._frozen_aBls[0] for s in states],
-                kwargss=self._get_parallel_kwargss(states),
-                engine_globals=dict(global_model=self,temp=temp),
-                )
-        self.states_list = states
-        for s, (big_stateseq,like) in zip(self.states_list,raw):
+                [s._frozen_aBls[0] for s in states_to_resample],
+                kwargss=self._get_parallel_kwargss(states_to_resample),
+                engine_globals=dict(global_model=self,temp=temp))
+
+        for s, (big_stateseq,like) in zip(states_to_resample,raw):
             s.big_stateseq = big_stateseq
-            s._map_states() # sets subhmm states
+            s._map_states()
             s._loglike = like
+        # these got cleared above, so we add them back
+        for s in states_to_hold_out:
+            s._add_substates_to_subHMMs()
+
+        return states_to_resample
 
     @staticmethod
     @engine_global_namespace
