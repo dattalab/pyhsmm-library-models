@@ -3,11 +3,10 @@ from __future__ import division
 
 
 num_iter = 5
-training_slice = slice(0,6000) # out of a possible 290000
-test_slice = slice(0,6000)
+training_slice = slice(0,290000) # out of a possible 290000
+test_slice = slice(0,70000)
 THIS_PROFILE = "default"
-Nmaxsuper=10
-
+Nmaxsuper=80
 
 import numpy as np
 import cPickle, os
@@ -121,7 +120,8 @@ pyhsmm.parallel.costs = np.zeros(len(dviews))
 print "Distributing data to %d clients...\n" % n_clients
 all_data = np.array_split(training_data, n_clients)
 for this_data in all_data:
-    model.add_data_parallel(this_data,left_censoring=True)
+    # model.add_data_parallel(this_data,left_censoring=True)
+    model.add_data(training_data,left_censoring=True)
 
 ##########################
 #  Gather model samples  #
@@ -141,7 +141,8 @@ if not os.path.exists(outdir):
 idx = None
 for itr in progprint_xrange(num_iter,perline=1):
     print "About to enter resample_model_parallel"
-    model.resample_model_parallel()
+    # model.resample_model_parallel()
+    model.resample_model()
     print "Resampled model, now getting likelihoods"
     loglike = model.log_likelihood()/len(training_data)
     likelihoods.append(loglike)
