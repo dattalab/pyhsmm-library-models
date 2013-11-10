@@ -6,7 +6,7 @@ num_iter = 5
 training_slice = slice(0,290000) # out of a possible 290000
 test_slice = slice(0,70000)
 THIS_PROFILE = "default"
-Nmaxsuper=80
+Nmaxsuper=60
 
 import numpy as np
 import cPickle, os
