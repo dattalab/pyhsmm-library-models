@@ -5,6 +5,7 @@ from matplotlib import pyplot as plt
 import pyhsmm
 from pyhsmm.util.text import progprint_xrange
 from library_subhmm_models import HSMMIntNegBinVariantFrozenSubHMMs
+from util import split_data
 
 from IPython.parallel import Client
 
@@ -51,7 +52,8 @@ truemodel = pyhsmm.models.HSMMIntNegBinVariantSubHMMs(
         obs_distnss=true_obs_distnss,
         dur_distns=true_dur_distns)
 
-datas = [truemodel.generate(T//6)[0] for i in range(6)]
+alldata = truemodel.generate(T)[0]
+
 
 plt.figure()
 truemodel.plot()
@@ -77,12 +79,14 @@ model = HSMMIntNegBinVariantFrozenSubHMMs(
         obs_distnss=[library]*Nmaxsuper,
         dur_distns=dur_distns)
 
+datas, aBls = split_data(alldata,model,6)
+
 if PARALLEL:
-    for data in datas:
-        model.add_data_parallel(data,left_censoring=True)
+    for data, aBl in zip(datas, aBls):
+        model.add_data_parallel(data=data,frozen_aBl=aBl,left_censoring=True)
 else:
-    for data in datas:
-        model.add_data(data,left_censoring=True)
+    for data, aBl in zip(datas, aBls):
+        model.add_data(data=data,frozen_aBl=aBl,left_censoring=True)
 
 ###############
 #  inference  #
@@ -106,6 +110,9 @@ substateseqs = [np.concatenate([s.stateseq for s in hmm.states_list]) for hmm in
 
 print len(superstateseq)
 print len(np.concatenate(substateseqs))
+
+print 'THIS SHOULD PRINT LOADED FROM CACHE'
+datas, aBls = split_data(alldata,model,6)
 
 plt.show()
 
