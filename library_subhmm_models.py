@@ -13,6 +13,10 @@ hostname = socket.gethostname()
 if os.path.exists("/hms/scratch1/"):
     likelihood_cache_dir_subhmms = '/hms/scratch1/abw11/tmp/cached_likelihoods'
     likelihood_cache_dir_hmm = '/hms/scratch1/abw11/tmp/cached_likelihoods_hmm'
+elif os.path.exists("/data/behavior/"):
+    tempdir = "/data/behavior/"
+    likelihood_cache_dir_subhmms = os.path.join(tempdir, 'cached_likelihoods')
+    likelihood_cache_dir_hmm = os.path.join(tempdir, 'cached_likelihoods_hmm')
 else:
     tempdir = tempfile.gettempdir()
     likelihood_cache_dir_subhmms = os.path.join(tempdir, 'cached_likelihoods')

@@ -28,8 +28,12 @@ def reduce_random(stateseq,target_num_states):
 
 
 ### likelihood caching
+if os.path.exists("/data/behavior/"):
+    tempdir = "/data/behavior/"
+else:
+    tempdir = tempfile.gettempdir()
+full_likelihood_caches = os.path.join(tempdir, 'cached_likelihoods_subhmm_full')
 
-full_likelihood_caches = os.path.join(tempfile.gettempdir(),'cached_likelihoods_subhmm_full')
 
 def hash_library_and_data(mus,sigmas,data):
     thehash = hashlib.sha1(data)
