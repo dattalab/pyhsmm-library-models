@@ -84,8 +84,9 @@ class HSMMIntNegBinVariantFrozenSubHMMs(HSMMIntNegBinVariantSubHMMs):
         return [dict(trunc=s.trunc,left_censoring=s.left_censoring,
                     right_censoring=s.right_censoring) for s in states_objs]
 
-    def resample_states_parallel(self,states_to_resample,states_to_hold_out,temp=None):
+    def resample_states_parallel(self,temp=None):
         import pyhsmm.parallel as parallel
+        states_to_resample = self.states_list
         # remove things we don't need in parallel
         self.states_list = []
         # NOTE: we could also call s._remove_substates_from_subHMMs, but we
@@ -108,11 +109,7 @@ class HSMMIntNegBinVariantFrozenSubHMMs(HSMMIntNegBinVariantSubHMMs):
             s._map_states() # NOTE: calls s._add_substates_to_subhmms
             s._loglike = like
 
-        # these got cleared above, so we add them back
-        for s in states_to_hold_out:
-            s._add_substates_to_subHMMs()
-
-        return states_to_resample
+        self.states_list = states_to_resample
 
     @staticmethod
     @engine_global_namespace
