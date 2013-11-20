@@ -31,7 +31,7 @@ def reduce_random(stateseq,target_num_states):
 if os.path.exists("/data/behavior/"):
     tempdir = "/data/behavior/"
 else:
-    tempfile.gettempdir()
+    tempdir = tempfile.gettempdir()
 full_likelihood_caches = os.path.join(tempdir, 'cached_likelihoods_subhmm_full')
 
 
