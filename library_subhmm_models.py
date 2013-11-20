@@ -17,6 +17,10 @@ elif os.path.exists("/data/behavior/"):
     tempdir = "/data/behavior/"
     likelihood_cache_dir_subhmms = os.path.join(tempdir, 'cached_likelihoods')
     likelihood_cache_dir_hmm = os.path.join(tempdir, 'cached_likelihoods_hmm')
+else:
+    tempdir = tempfile.gettempdir()
+    likelihood_cache_dir_subhmms = os.path.join(tempdir, 'cached_likelihoods')
+    likelihood_cache_dir_hmm = os.path.join(tempdir, 'cached_likelihoods_hmm')
 
 class FrozenSubHMM(pyhsmm.models.HMMEigen):
     def resample_obs_distns(self,*args,**kwargs):
