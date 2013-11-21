@@ -22,13 +22,9 @@ else:
     likelihood_cache_dir_subhmms = os.path.join(tempdir, 'cached_likelihoods')
     likelihood_cache_dir_hmm = os.path.join(tempdir, 'cached_likelihoods_hmm')
 
-class FrozenSubHMM(pyhsmm.models.HMMEigen):
+class FrozenSubHMM(pyhsmm.models.IntNegBinSubHMM):
     def resample_obs_distns(self,*args,**kwargs):
         pass
-
-    def resample_states(self,*args,**kwargs):
-        pass
-
 
 class HSMMIntNegBinVariantFrozenSubHMMsStates(HSMMIntNegBinVariantSubHMMsStates):
     # NOTE: assumes all subHMMs are the same, so that all frozen_aBls are same
