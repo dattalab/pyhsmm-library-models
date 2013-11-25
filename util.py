@@ -52,10 +52,16 @@ def split_data(big_data_array,model,num_parts):
     if not os.path.exists(full_likelihood_caches):
         os.mkdir(full_likelihood_caches)
 
-    filename = hash_library_and_data(
-            [o.mu for o in model.obs_distnss[0]],
-            [o.sigma for o in model.obs_distnss[0]],
-            big_data_array)
+    if hasattr(model, "obs_distnss"):
+        filename = hash_library_and_data(
+                [o.mu for o in model.obs_distnss[0]],
+                [o.sigma for o in model.obs_distnss[0]],
+                big_data_array)
+    elif hasattr(model, "obs_distns"):
+        filename = hash_library_and_data(
+                [c.mu for c in model.obs_distns[0].components],
+                [c.sigma for c in model.obs_distns[0].components],
+                big_data_array)
     filepath = os.path.join(full_likelihood_caches,filename)
 
     if os.path.isfile(filepath):
