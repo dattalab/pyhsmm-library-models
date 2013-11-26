@@ -106,7 +106,7 @@ class HSMMIntNegBinVariantFrozenSubHMMs(HSMMIntNegBinVariantSubHMMs):
 
         for s, (big_stateseq,like) in zip(states_to_resample,raw):
             s.big_stateseq = big_stateseq
-            s._map_states() # NOTE: calls s._add_substates_to_subhmms
+            s._map_states() # NOTE: calls s._add_data_to_subhmms
             s._loglike = like
 
         self.states_list = states_to_resample
