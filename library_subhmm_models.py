@@ -40,6 +40,20 @@ class FrozenSubHMMStates(library_models.FrozenHMMStates):
 class FrozenSubHMM(library_models.FrozenHMM,pyhsmm.models.IntNegBinSubHMM):
     _states_class = FrozenSubHMMStates
 
+    def _get_parallel_data(self,states_obj):
+        return states_obj._frozen_aBl
+
+    @staticmethod
+    @engine_global_namespace
+    def _state_sampler(frozen_aBl,**kwargs):
+        # expects globals: global_model, temp
+        global_model.add_data(
+                data=frozen_aBl, # dummy
+                precomputed_likelihoods=frozen_aBl,
+                initialize_from_prior=False,temp=temp,**kwargs)
+        s = global_model.states_list.pop()
+        return s.stateseq, s.log_likelihood()
+
 class HSMMIntNegBinVariantFrozenSubHMMsStates(HSMMIntNegBinVariantSubHMMsStates):
     # NOTE: assumes all subHMMs are the same, so that all frozen_aBls are same
     def __init__(self,model,data,frozen_aBl=None,**kwargs):
@@ -105,15 +119,13 @@ class HSMMIntNegBinVariantFrozenSubHMMs(HSMMIntNegBinVariantSubHMMs):
     _states_class = HSMMIntNegBinVariantFrozenSubHMMsStates
     _subhmm_class = FrozenSubHMM
 
-    def add_data_parallel(self,data,**kwargs):
-        import pyhsmm.parallel as parallel
-        self.add_data(data=data,**kwargs)
-        parallel.add_data(self.states_list[-1]._frozen_aBls[0])
-
     # TODO is this necessary, or is it inherited?
     def _get_parallel_kwargss(self,states_objs):
         return [dict(trunc=s.trunc,left_censoring=s.left_censoring,
                     right_censoring=s.right_censoring) for s in states_objs]
+
+    def _get_parallel_data(self,states_obj):
+        return states_obj._frozen_aBls[0]
 
     def resample_states_parallel(self,temp=None):
         import pyhsmm.parallel as parallel
@@ -147,7 +159,6 @@ class HSMMIntNegBinVariantFrozenSubHMMs(HSMMIntNegBinVariantSubHMMs):
     def _state_sampler(frozen_aBl,**kwargs):
         # expects globals: global_model, temp
         # NOTE: a little extra work because this runs _map_states locally
-        # TODO allocate alphan out here (global)
         global_model.add_data(
                 data=frozen_aBl, # dummy
                 frozen_aBl=frozen_aBl,
