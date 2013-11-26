@@ -117,8 +117,8 @@ class FrozenMixtureDistribution(MixtureDistribution):
 
 class FrozenHMMStates(pyhsmm.internals.states.HMMStatesEigen):
     def __init__(self,model,data,precomputed_likelihoods=None,**kwargs):
-        if precomputed_likelihoods is None:
-            self._frozen_aBl = self.get_all_likelihoods(model,data)
+        self._frozen_aBl = precomputed_likelihoods if precomputed_likelihoods is not None \
+                else self.get_all_likelihoods(model,data)
         super(FrozenHMMStates,self).__init__(model,data=data,**kwargs)
 
     def get_all_likelihoods(self,model,data):
@@ -156,7 +156,7 @@ class FrozenHMMStates(pyhsmm.internals.states.HMMStatesEigen):
 class FrozenHMM(pyhsmm.models.HMMEigen):
     _states_class = FrozenHMMStates
 
-    def resample_obs_distns(self):
+    def resample_obs_distns(self,temp=None):
         pass
 
 

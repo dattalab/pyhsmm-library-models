@@ -8,6 +8,8 @@ from pyhsmm.models import HSMMIntNegBinVariantSubHMMs
 from pyhsmm.internals.states import HSMMIntNegBinVariantSubHMMsStates
 from pyhsmm.util.general import engine_global_namespace
 
+import library_models
+
 import socket
 hostname = socket.gethostname()
 if os.path.exists("/hms/scratch1/"):
@@ -22,9 +24,21 @@ else:
     likelihood_cache_dir_subhmms = os.path.join(tempdir, 'cached_likelihoods')
     likelihood_cache_dir_hmm = os.path.join(tempdir, 'cached_likelihoods_hmm')
 
-class FrozenSubHMM(pyhsmm.models.IntNegBinSubHMM):
-    def resample_obs_distns(self,*args,**kwargs):
-        pass
+class FrozenSubHMMStates(library_models.FrozenHMMStates):
+    @property
+    def trans_matrix(self):
+        return super(FrozenSubHMMStates,self).trans_matrix.astype(np.float32,copy=False)
+
+    @property
+    def pi_0(self):
+        return super(FrozenSubHMMStates,self).pi_0.astype(np.float32,copy=False)
+
+    def get_all_likelihoods(self,*args,**kwargs):
+        return super(FrozenSubHMMStates,self).get_all_likelihoods(*args,**kwargs)\
+                .astype(np.float32,copy=False)
+
+class FrozenSubHMM(library_models.FrozenHMM,pyhsmm.models.IntNegBinSubHMM):
+    _states_class = FrozenSubHMMStates
 
 class HSMMIntNegBinVariantFrozenSubHMMsStates(HSMMIntNegBinVariantSubHMMsStates):
     # NOTE: assumes all subHMMs are the same, so that all frozen_aBls are same
@@ -69,6 +83,23 @@ class HSMMIntNegBinVariantFrozenSubHMMsStates(HSMMIntNegBinVariantSubHMMsStates)
     @property
     def aBls(self):
         return self._frozen_aBls
+
+    # NOTE: override this so that FrozenSubHMMs get passed their precomputed
+    # likelihoods
+    def _add_data_to_subHMMs(self,substates=None):
+        assert not hasattr(self,'substates_list') or len(self.substates_list) == 0
+        self.substates_list = []
+        superstates, durations = self.stateseq_norep, self.durations_censored
+        starts = np.concatenate(((0,),np.cumsum(durations[:-1])))
+        for superstate, start, duration in zip(superstates, starts, durations):
+            self.model.HMMs[superstate].add_data(
+                    T=duration if self.data is None else None,
+                    data=self.data[start:start+duration] if self.data is not None else None,
+                    stateseq=substates[start:start+duration] \
+                            if substates is not None else None,
+                    # NOTE: next line is only difference from parent
+                    precomputed_likelihoods=self._frozen_aBls[superstate][start:start+duration])
+            self.substates_list.append(self.model.HMMs[superstate].states_list[-1])
 
 class HSMMIntNegBinVariantFrozenSubHMMs(HSMMIntNegBinVariantSubHMMs):
     _states_class = HSMMIntNegBinVariantFrozenSubHMMsStates
