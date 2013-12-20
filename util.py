@@ -70,7 +70,10 @@ def split_data(big_data_array,model,num_parts):
         print 'loaded ALL aBls from cache: %s' % filepath
     else:
         model.add_data(data=big_data_array)
-        big_aBl_array = model.states_list.pop().aBls[0]
+        if hasattr(model.states_list[0], 'aBls'):
+            big_aBl_array = model.states_list.pop().aBls[0]
+        else:
+            big_aBl_array = model.states_list.pop().aBl
         with open(filepath,'w') as outfile:
             cPickle.dump(big_aBl_array,outfile,protocol=-1)
         print 'computed ALL aBls and saved to cache: %s' % filepath
